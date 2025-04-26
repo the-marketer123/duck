@@ -1,0 +1,2686 @@
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Gunnarson V2 Alpha</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script><!--J Query-->
+        <script src='https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js'></script><!--GL Matrix-->
+        <style>
+            body {
+                
+                margin:0;
+                overflow:hidden;
+                font-family:trebuchet ms;
+            }
+            
+            #gl-canvas {
+                display:none;
+            }
+            
+            #board-canvas {
+                
+                display:none;
+            }
+            
+            #ui-canvas {
+                
+                position:fixed;
+                z-index:-1;
+            }
+            
+            .page {
+                
+                display:none;
+                color:rgb(255,255,255);
+                padding:20px;
+                z-index:1;
+            }
+            
+            input {
+                
+                height:24px;
+                outline:none;
+                background-color:rgb(255,255,255);
+                border:none;
+                border-bottom:4px solid black;
+                transition-duration:0.4s;
+                border-radius:5px;
+            }
+            
+            input:hover {
+                
+                background-color:rgb(200,200,255);
+            }
+            
+            input:focus {
+                
+                background-color:rgb(170,200,255);
+            }
+            
+            textarea {
+                
+                height:240px;
+                outline:none;
+                background-color:rgb(255,255,255);
+                border:none;
+                border-bottom:4px solid black;
+                transition-duration:0.4s;
+                border-radius:5px;
+            }
+            
+            textarea:hover {
+                
+                background-color:rgb(200,200,255);
+            }
+            
+            textarea:focus {
+                
+                background-color:rgb(170,200,255);
+            }
+            
+            button {
+                
+                width:60px;
+                height:30px;
+                transition-duration:0.4s;
+                border-radius:8px;
+                font-size:16px;
+                background-color:rgb(255,255,255);
+            }
+            
+            button:hover {
+                
+                cursor:pointer;
+                border-radius:13px;
+                background-color:rgb(150,255,205);
+            }
+            
+
+            a {
+                color: #ff0;
+                text-decoration: none;
+            }
+            
+            a:hover {
+                text-decoration: underline;
+            }
+            
+            
+            a, button, input, select {
+                pointer-events: auto;
+            }
+            
+            .lil-gui {
+                z-index: 2 !important; /* TODO Solve this in HTML */
+            }
+            
+            @media all and ( max-width: 640px ) {
+                .lil-gui.root { 
+                    right: auto;
+                    top: auto;
+                    max-height: 50%;
+                    max-width: 80%;
+                    bottom: 0;
+                    left: 0;
+                }
+            }
+            
+            #overlay {
+                position: absolute;
+                font-size: 16px;
+                z-index: 2;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+                background: rgba(0,0,0,0.7);
+            }
+            
+                #overlay button {
+                    background: transparent;
+                    border: 0;
+                    border: 1px solid rgb(255, 255, 255);
+                    border-radius: 4px;
+                    color: #ffffff;
+                    padding: 12px 18px;
+                    text-transform: uppercase;
+                    cursor: pointer;
+                }
+            
+            #notSupported {
+                width: 50%;
+                margin: auto;
+                background-color: #f00;
+                margin-top: 20px;
+                padding: 10px;
+            }
+        </style>
+        <link href='https://fonts.googleapis.com/css?family=Afacad' rel='stylesheet'>
+
+    </head>
+	<body id="body">
+        <canvas id='board-canvas' width='800' height='1500'></canvas>
+		<script type="importmap">
+            {
+                "imports": {
+                  "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.172.0/three.module.js",
+                  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/",
+                  "@dimforge/rapier3d-compat": "https://cdn.skypack.dev/@dimforge/rapier3d-compat"
+                }
+            }
+        </script>
+   
+        <script type="x-shader/x-vertex" id="vertexShader">
+
+			varying vec3 vWorldPosition;
+
+			void main() {
+
+				vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+				vWorldPosition = worldPosition.xyz;
+
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+			}
+
+		</script>
+
+		<script type="x-shader/x-fragment" id="fragmentShader">
+
+			uniform vec3 topColor;
+			uniform vec3 bottomColor;
+			uniform float offset;
+			uniform float exponent;
+
+			varying vec3 vWorldPosition;
+
+			void main() {
+
+				float h = normalize( vWorldPosition + offset ).y;
+				gl_FragColor = vec4( mix( bottomColor, topColor, max( pow( max( h , 0.0), exponent ), 0.0 ) ), 1.0 );
+
+			}
+
+		</script>
+
+        <canvas id='gl-canvas' width='600' height='600'></canvas>
+        <canvas id='ui-canvas' width='600' height='600'></canvas>
+        
+		<script type="module">
+            /*Basics*/
+                import * as THREE from 'three';
+                import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+                import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+                import { Sky } from 'three/addons/objects/Sky.js';
+                import  Stats  from 'three/addons/libs/stats.module.js'
+                const RAPIER = await import('https://cdn.skypack.dev/@dimforge/rapier3d-compat@0.11.2');
+                await RAPIER.init();
+
+                let objectsToRemove=[]
+                let fpscamera, debugCam, scene, renderer, plat1, prototype5x5G;
+                const pi = Math.PI;
+                const debug = {
+                    lines:false,
+                    cam:false,
+                    hitboxes:false
+                };
+                let windowWidth = window.innerWidth;
+                let windowHeight = window.innerHeight;
+                const eventQueue = new RAPIER.EventQueue(true);
+
+
+                let glCanvas=document.getElementById('gl-canvas')
+                glCanvas.width = window.innerWidth
+                glCanvas.height = window.innerHeight
+
+                let uiCanvas=document.getElementById('ui-canvas')
+                let ui_ctx=uiCanvas.getContext('2d')
+                uiCanvas.width = window.innerWidth
+                uiCanvas.height = window.innerHeight
+
+                let cooldowns = [];
+                const cooldown = (function(out){
+                    out.create= function(id, length) {
+                        cooldowns[id] = {num: 0, time: length * 10, run: false, check: true};
+                        return {id, length}
+
+                    }
+                    out.activate = function(id) {
+                        cooldowns[id].run = true
+                        cooldowns[id].check = false
+                    }
+                    out.update = function() {
+                        for (var i = 0; i < cooldowns.length; i++){
+                            if (cooldowns.length > 0 && cooldowns[i] !== undefined) {
+                                if (cooldowns[i].run === true) {
+                                    cooldowns[i].num ++;
+                                    if (cooldowns[i].num === cooldowns[i].time){
+                                        cooldowns[i].num = 0;
+                                        cooldowns[i].run = false;
+                                        cooldowns[i].check = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    out.check = function(id) {
+                        return cooldowns[id].check
+                    }
+                    return out;
+                })({})
+                
+
+                function resize( object, scaleX, scaleY, scaleZ, updateUV ) {
+                    object.scale.set( scaleX, scaleY, scaleZ );
+                
+                    if( updateUV )
+                    {
+                        var pos = object.geometry.getAttribute( 'position' ),
+                            uv = object.geometry.getAttribute( 'uv' );
+
+                        for( var i=0; i<pos.count; i++ )
+                        {
+                            var x = scaleX * -pos.getX(i),
+                                y = scaleY * -pos.getY(i),
+                                z = scaleZ * -pos.getZ(i);
+
+                            if( i<8 ) uv.setXY( i, z, y );
+                            else if( i<16 ) uv.setXY( i, x, z );
+                            else uv.setXY( i, y, x );
+                        }
+                        uv.needsUpdate = true;
+                    }
+                 }           
+
+                function getTextWidth(text, fontSize = "12px", fontFamily = "Arial", fontWeight = "normal") {
+                    const canvas = document.createElement("canvas");
+                    const context = canvas.getContext("2d");
+
+                    // Ensure proper font formatting
+                    context.font = `${fontWeight} ${fontSize} ${fontFamily}`;
+
+                    return context.measureText(text).width; // Return width directly
+                 }
+
+                const buttons = [];
+                const texts = [];
+
+                function drawText(text, x, y, size = '12px', color = 'black', font = 'Arial', bold = 'normal', cool = false) {
+                    // Store the text properties in the array
+                    texts.push({ text, x, y, size, color, font, bold, cool });
+
+                    // Draw the text immediately
+                    drawTextInstance({ text, x, y, size, color, font, bold, cool });
+                 }
+
+                function drawTextInstance(textObj) {
+                    ui_ctx.font = `${textObj.bold} ${textObj.size} ${textObj.font}`;
+
+                    // If 'x' is 'center', calculate centered position
+                    if (textObj.x === 'center') {
+                        const textWidth = ui_ctx.measureText(textObj.text).width;
+                        textObj.x = (uiCanvas.width - textWidth) / 2;
+                    }
+
+                    ui_ctx.textBaseline = "top";
+
+                    if (textObj.cool) {
+                        // Fill with white, then outline with the chosen color
+                        ui_ctx.fillStyle = 'white';
+                        ui_ctx.fillText(textObj.text, textObj.x, textObj.y);
+                        ui_ctx.lineWidth = 2;
+                        ui_ctx.strokeStyle = textObj.color;
+                        ui_ctx.strokeText(textObj.text, textObj.x, textObj.y);
+                    } else {
+                        // Normal rendering
+                        ui_ctx.fillStyle = textObj.color;
+                        ui_ctx.fillText(textObj.text, textObj.x, textObj.y);
+                    }
+                 }
+
+                function drawButton(text, x, y, size = "16px", tcolor = "black", font = "Arial", bold = "normal", cool = false, callback = null, padding = 10) {
+                    ui_ctx.font = `${bold} ${size} ${font}`;
+                    
+                    if (x === 'center') {
+                        const textWidth = ui_ctx.measureText(text).width;
+                        x = (uiCanvas.width - textWidth) / 2;
+                    }
+                    const textWidth = ui_ctx.measureText(text).width;
+                    const textHeight = parseInt(size, 10);
+                    const buttonWidth = textWidth + padding * 2;
+                    const buttonHeight = textHeight + padding * 2;
+
+                    const button = {
+                        x, y,
+                        width: buttonWidth,
+                        height: buttonHeight,
+                        text, size, tcolor, font, bold, cool, callback, padding,
+                        hovered: false
+                    };
+
+                    buttons.push(button);
+
+                    drawButtonInstance(button);
+                 }
+
+                function drawButtonInstance(button) {
+                    ui_ctx.font = `${button.bold} ${button.size} ${button.font}`;
+                    ui_ctx.textBaseline = "middle";
+
+                    const textWidth = ui_ctx.measureText(button.text).width;
+                    const textX = button.x + (button.width - textWidth) / 2;
+                    const textY = button.y + button.height / 2;
+                    const fontSize = parseInt(button.size, 10);
+
+                    if (button.cool) {
+                        let gradient = ui_ctx.createLinearGradient(textX, textY - fontSize / 2, textX, textY + fontSize / 2);
+                        if (button.hovered) {
+                        gradient.addColorStop(0, 'gray');
+                        gradient.addColorStop(1, 'gray');
+                        } else {
+                        gradient.addColorStop(0, 'white');
+                        gradient.addColorStop(1, 'white');
+                        }
+                        ui_ctx.fillStyle = gradient;
+                        ui_ctx.fillText(button.text, textX, textY);
+
+                        ui_ctx.lineWidth = 2;
+                        ui_ctx.strokeStyle = button.tcolor;
+                        ui_ctx.strokeText(button.text, textX, textY);
+                    } else {
+                        ui_ctx.fillStyle = button.tcolor;
+                        ui_ctx.fillText(button.text, textX, textY);
+                    }
+                 }
+
+                function redrawUI() {
+                    // Clear the entire UI canvas
+                    ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+
+                    // Redraw all stored texts
+                    texts.forEach(textObj => drawTextInstance(textObj));
+
+                    // Redraw all buttons
+                    buttons.forEach(button => drawButtonInstance(button));
+                 }
+
+                
+                let ctkl = true;
+                uiCanvas.addEventListener("mousemove", function(event) {
+                    const rect = uiCanvas.getBoundingClientRect();
+                    const mouseX = event.clientX - rect.left;
+                    const mouseY = event.clientY - rect.top;
+                    let needsRedraw = false;
+
+                    buttons.forEach(button => {
+                        const isHovered = mouseX >= button.x && mouseX <= button.x + button.width &&
+                                        mouseY >= button.y && mouseY <= button.y + button.height;
+                        if (isHovered !== button.hovered) {
+                        button.hovered = isHovered;
+                        needsRedraw = true;
+                        }
+                    });
+                    if (needsRedraw || ctkl === true) {
+                        redrawUI();
+                        ctkl = false;
+                    }
+                 });
+
+                uiCanvas.addEventListener("click", function(event) {
+                    const rect = uiCanvas.getBoundingClientRect();
+                    const clickX = event.clientX - rect.left;
+                    const clickY = event.clientY - rect.top;
+
+                    buttons.forEach(button => {
+                        if (clickX >= button.x && clickX <= button.x + button.width &&
+                            clickY >= button.y && clickY <= button.y + button.height) {
+                        if (button.callback && typeof button.callback === 'function') {
+                            button.callback();
+                        }
+                        }
+                    });
+                 });
+
+
+
+
+
+
+                
+
+            /*Scene*/
+                
+                const pmremgen = new THREE.PMREMGenerator(new THREE.WebGLRenderer());
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color().setRGB( 100, 100, 100 );
+
+                let game = {
+                    paused: true
+
+                };
+                
+                let level = {
+                    num: 1,
+                    hasEnem: false,
+                    hasCube: false,
+                    hasGuns: false,
+                    hasMvTl: false,
+                    hasExpl: false,
+                    paused: false,
+                    curLevel: 'menu',
+                    update: false,
+                    startup: true
+                };
+
+                renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true });
+                renderer.setSize( innerWidth, innerHeight );
+                renderer.setAnimationLoop( animationLoop );
+
+                //textures
+                let boardCanvas=document.getElementById('board-canvas');
+                let board_ctx=boardCanvas.getContext('2d');
+
+                const gravity = { x: 0.0, y: -9.81, z: 0.0 };
+                let world = new RAPIER.World(gravity);
+                world.timestep = 0.008; // Faster physics (120 FPS)
+
+                let rigidBodies = [];
+                let pcolliders = [];
+
+                const stats = new Stats()
+                document.body.appendChild(stats.dom)
+
+                const clock = new THREE.Clock()
+                let delta
+
+            /*Lights*/
+                
+ 
+                scene.fog = new THREE.Fog( scene.background, 1, 5000 );
+
+                const hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2 );
+				hemiLight.color.setHSL( 0.6, 1, 0.6 );
+				hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+				hemiLight.position.set( 0, 50, 0 );
+				scene.add( hemiLight );
+				
+				const dirLight = new THREE.DirectionalLight( 0xffffff, 3 );
+				dirLight.color.setHSL( 0.1, 1, 0.95 );
+				dirLight.position.set( - 1, 1.75, 1 );
+				dirLight.position.multiplyScalar( 30 );
+				scene.add( dirLight );
+
+				dirLight.castShadow = true;
+				dirLight.shadow.mapSize.width = 2048;
+				dirLight.shadow.mapSize.height = 2048;
+
+				const d = 50;
+
+				dirLight.shadow.camera.left =   - d;
+				dirLight.shadow.camera.right =    d;
+				dirLight.shadow.camera.top =      d;
+				dirLight.shadow.camera.bottom = - d;
+				dirLight.shadow.camera.far =   3500;
+				dirLight.shadow.bias =     - 0.0001;
+
+            /*Camera*/
+                
+                fpscamera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 5000 );
+
+                debugCam = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 5000 );
+
+                let orbits = [];
+                function addOrbit (camera, element=renderer.domElement) {
+                    const orbitControls = new OrbitControls(camera, element);// originally renderer.domElement
+                    orbitControls.enableDamping = true
+                    orbitControls.minDistance = 0.01
+                    orbitControls.maxDistance = 1500
+                    orbitControls.enablePan = false
+                    orbitControls.maxPolarAngle = Math.PI / 2 - 0.05
+                    orbitControls.update();
+                    orbits.push(orbitControls);
+                    camera.orbitNum = orbits.length - 1;
+                }
+
+                let pointerLocks = [];
+                function addPointerLock ( camera, element ) {
+                    let controls = new PointerLockControls( camera, element );
+                    document.addEventListener( 'click', function () {
+                        if (controls && !debug.cam){
+                            controls.lock();
+                        }                    
+                    } );
+                    camera.sensitivity = 1
+                    pointerLocks.push(controls);
+                    camera.pointerLockNum = pointerLocks.length - 1;
+                }
+
+                scene.add( fpscamera );
+                scene.add( debugCam );
+                
+
+
+           
+            /*Assets*/
+                
+
+                
+                const grid = new THREE.GridHelper( 50, 50, 0xffffff, 0x7b7b7b );
+                //scene.add( grid );
+                
+
+                renderer = new THREE.WebGLRenderer( { antialias: true } );
+                renderer.setPixelRatio( window.devicePixelRatio );
+                renderer.setSize( window.innerWidth, window.innerHeight );
+                document.body.appendChild( renderer.domElement );
+
+                // Load Platform texture
+                prototype5x5G = new THREE.TextureLoader().load(
+                    "data:image/png;base64,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RzO+VxdvsMwyy6RXvvKVackll0xzzz33jJd49913p2OOOSadffbZM76XGxAgQIBAvoCAI99KTwIECBAg0GcBAUeD1S/zf9BypvepT30q/f3vf8/p2qs+O+ywQ1phhRUqXfOtt96a9txzz0rv6WYECBAgMFygzP9+nnzyySn+aAQIECBAgEB/BAQcDdb6TW96U1pllVUqH/GQQw5Jl156aeX3bfsN99prrzTPPPNUuowHH3ww7bLLLunf//53pfd1MwIECBCYXkDA4dNBgAABAgQI5AgIOHKUKuqz8847p8c//vEV3e0/t/nKV76SLrroosrv2+YbRrARAUcd7cMf/nC677776ri1exIgQIDAFAICDh8LAgQIECBAIEdAwJGjVFGfD37wg2nxxRev6G4CjmGQj3nMY9JHP/rRyq3jhh/60IfS/fffX8u93ZQAAQIEHi4g4PCpIECAAAECBHIEBBw5ShX1+cQnPpEWWmihiu72n9sccMAB6dprr638vm2+4VJLLZXe9773Vb6Ee++9N+26666V39cNCRAgQGB6AQGHTwcBAgQIECCQIyDgyFGqqM8+++xTyWkes6YT+0FcfPHFKV5Rif+s/UfgiU98YnrHO95RKcm//vWvdMopp6RTTz210vu6GQECBAgMFxBw+IQQIECAAAECOQICjhylCvrMN998KU47GdaOOOKIdP7552ePFhtd2uxyaq6nPe1p6Q1veMNQyz322CPdcccd2d4RcAiSsrl0JECAQGUCAo7KKN2IAAECBAh0WkDA0VB5c/aEOPTQQ9Mll1zS0Iy6Pcyaa66Ztttuu6GLjNNQIrTQCBAgQGCyBQQck10fsyNAgAABApMiIOBoqBJLL710eu973zt0tIMOOihdffXVDc2o28Ost956acstt5x2kXEKSpyGohEgQIDA5AsIOCa/RmZIgAABAgQmQUDA0VAVnvSkJ6W3v/3tQ0eLY01vueWWhmY0fJhHPOIRKfaxWHLJJdP8888/2Dsk/rt44uGee+4ZbGp61VVXZc01rl155ZXTYostluL41rnmmmvwak2cRHL77benyy+/fPDPKtumm26aNttss2lvedttt6V4RUUjQIAAgckXEHBMfo3MkAABAgQITIKAgKOhKuTsCRHHmt59990NzWj4MC984QvTRhttNLTTGWeckY499tihfSLQiM0+l1122Wn7PfDAA+mTn/xkuuuuuypb+4te9KK0wQYbTHu/6667Ln3mM5+pbDw3IkCAAIH6BAQc9dm6MwECBAgQ6JKAgKOhaq699tppm222mXa02LzyAx/4wMRsYrn66qunV73qVUN1Ys6f//zn0xVXXDFtv1FBQ1x4ww03pP3337/StW+99dZpnXXWmXZel156aTrkkEMaqr5hCBAgQGAmAgKOmei5lgABAgQI9EdAwNFQrUftCRFPL+y2224NzWb0MPE6yo477pji1ZphLcKJeBJiqtNclltuubTTTjsNXkmZrkVIEkHDZZddNnpSBXq89rWvTauuuuq0V1xwwQXp61//eoE76kqAAAEC4xIQcIxL3rgECBAgQKBdAgKOhuo16v+c3XzzzWnvvfduaDZ5wyy++OKDjVHjNZNhLV5TiddVZm8RarzrXe9KyyyzzNBrzzzzzHT00UfnTahArx122CGtsMIK017x29/+Nn3ve98rcEddCRAgQGBcAqP+N3SqeZ188skp/mgECBAgQIBAfwQEHA3V+sUvfnFaf/31px3t73//ezr11FMHT0Lce++9g408489NN9001n05Ntxww7TFFlsMVYoTSfbdd98UG3fOarF/R+zjMazF2uLpj9hstOr2nve8Z2i4EsfxnnfeeYNNU2PfkzCPp2j+9re/pdgTRCNAgACByREQcExOLcyEAAECBAhMsoCAo6HqjNoTYtg0br311nTNNdekP/7xjyleragjEJhu/HgSIzYJfcITnjBUKub2ta99bdAnTkt53/veN/TJjwhyYv+OK6+8spYKxBGwiy66aOF7x7xuvPHGwXG95557boq9OuI1Go0AAQIExicg4BifvZEJECBAgECbBAQcDVXr9a9/fXr6058+49HiSYOzzjornXTSSYMnPJpocVRsPBERx70Oa4cffnj605/+lN761remlVZaaWjf008/PR133HG1TT+OgI3jbWfa/vGPf6SY6y9/+UtBx0wxXU+AAIGSAgKOknAuI0CAAAECPRMQcDRU8FF7QhSdxu23355+8IMfpAsvvLDopaX6b7LJJun5z3/+0GvjNZvYUyNexxnWYmPSAw88sLZXQWKD1HhlJv5ZVYsnOo488sjB0x0aAQIECDQrIOBo1ttoBAgQIECgrQICjoYqF5t1Lr300pWOFq9OfP/730+xYWbdLV5V2XnnndOyyy47o6HiFZCDDjooXXvttTO6z7CLF1hggbT77rtXfv/Yq+NLX/rS4HUhjQABAgSaExBwNGdtJAIECBAg0GYBAUdD1Ys9KZZaaqnKR6t7L4vZJxwnosTJKMOOfR21wCZ2tV9wwQXTJz/5yVFTKfX38crKfvvtN9aNX0tN3EUECBBosYCAo8XFM3UCBAgQINCggICjIeztt98+rbHGGrWMdt1116UDDjigkT0i4jWVeF2lTIunNg4++ODBySV1tng15aMf/Wh69KMfXcswv/jFL9KPf/zjWu7tpgQIECDwcAEBh08FAQIECBAgkCMg4MhRqqDPwgsvnJ7znOekxz72sdPuDTHPPPMMNsaMTT0XWWSRQqN++ctfTn/+858LXVOmc2w0+u53v7vw0ygRasS+G9dff32ZYQtfE0+brLXWWime5phuL4755ptv8Pfx6lD8M7fFKTbxCkwcK6sRIECAQP0CAo76jY1AgAABAgS6ICDgmNAqRhASgcgGG2yQ9UrI2Wefnb7zne80spo4MjaOji3yqsrxxx+ffvrTnzYyvzKDxJo22mijtOqqq2ZdftRRRw1Os9EIECBAoH4BAUf9xkYgQIAAAQJdEBBwTHgVV1hhhfTmN785PfKRjxw60zvuuCN9/OMfb2w1W2yxRdpwww2zxrvqqqvS5z73uRT7hUx623jjjdPmm28+cprnnXde+uY3vzmynw4ECBAgMHMBAcfMDd2BAAECBAj0QUDA0YIq5xYpXpuITTCbaBG4xMkwj3vc44YO98ADD6T9998/3XTTTU1Mq5Ix3vKWt6SnPOUpQ+91yy23pL322quS8dyEAAECBIYLCDh8QggQIECAAIEcgdzvzjn3mqrPIx6Ms0xraieccEI67bTTarr75Nw29uX4xCc+kWL/i2Ht85//fLr88ssbmXjsa/G2t70txRMmw9o999yTPv3pTzcWvFSx+FVWWSW96U1vGnqreBpll112aWRj1yrW5B4ECBBos4CAo83VM3cCBAgQINCcgICjOesZjbTTTjul2CdiWPvGN76Rzj///BmNk3vxc5/73LTVVltldb/ooovSV77ylay+k9Bp3nnnTXvsscfIPUY+9rGPpTvvvHMSpmwOBAgQ6LSAgKPT5bU4AgQIECBQmYCAozLKem/0mte8Jq222mpDBznyyCPT73//+3onklJabLHFBq+nRBCQ25qaW+58RvWLJ2YWWmihod0iBLnttttG3crfEyBAgMAMBQQcMwR0OQECBAgQ6ImAgKMlhd52220Hx54Oa0cccUQ655xzal1RvJqy4447pic96UmFxrn77rvTvvvum/75z38Wum5cnT/ykY+MPKq3yT1PxuVgXAIECEyCgIBjEqpgDgQIECBAYPIFBByTX6PBDOMklZVXXnnobA8//PD0pz/9qdYVxbG1L3rRi0qNceGFF6avfvWrpa5t8qIIcfbcc880zzzzDB121113Tffee2+TUzMWAQIEeikg4Ohl2S2aAAECBAgUFhBwFCZr/oK55pprsMnoAgssMHTwgw46KF199dW1TTBOTIlXU0YdWTtsAt/+9rfTueeeW9scq7jxcsstl971rncNvdV9992XPvzhD1cxnHsQIECAwAgBAYePCAECBAgQIJAjIODIURpzn3XWWSdtvfXWQ2cRp3rEF+44lrWOFiHLO97xjpEbnY4a+6677hq8qnLHHXeM6jq2v99mm23S2muvPXT8OK0mTq3RCBAgQKB+AQFH/cZGIECAAAECXRAQcDRUxcc+9rEpgoqLL744XXnlldmjLrHEEumd73znyKc3rrrqqnTwwQdn37dox4033jhtvvnmQy+74oor0r/+9a+RR8fGSS9x4kud7YlPfOJgHvG0yK233po91Oqrr5623377FK+pDGunn356Ou6447LvqyMBAgQIlBcQcJS3cyUBAgQIEOiTgICjgWrHqyXxasciiywyGO2GG24YbAYae1LceOONU84gnphYc80100te8pKR4Ubc4Ic//GH61a9+VctqllpqqcErG8NeTYlg44ADDhgEHDmvsdR5pG2EGzvssEOae+6504MPPpguvfTSQdDx5z//Od1+++1ezroxAAAgAElEQVRTGkWNNtxwwxRBzqhwI26w3377DeqoESBAgED9AgKO+o2NQIAAAQIEuiAg4Gigii9/+cvTs5/97ClHilc1rrvuusFxo/fcc0+KYOMxj3nM4JSShRdeOGt2cY+99957cH3VLeaz0047pdiXYlg79dRT04knnjjokvN/RGPOn/70p9Odd95Z6ZQj1Hj3u9+dIpSZqsXTHNdff/3gNJfYIDQ2El188cVThCK5x95ecskl6dBDD6103m5GgAABAtML5PzvypxXn3zyySn+aAQIECBAgEB/BAQcNdd6mWWWGXzhznkqoOxUvvvd76bf/e53ZS8fet2mm26aNttss6F9brrpprT//vs/tP9HPOkRT3HEpqTDWjxVEZuOVtme97znDZ56qavFHiex1lizRoAAAQLNCAg4mnE2CgECBAgQaLuAgKPmCm655ZZpvfXWq22Us846Kx111FG13D/CmZ133nnwqsd0LV4BOeSQQ9Jll132X11i/4t4TWRU+9rXvpb++Mc/juqW/fcRrCy99NLZ/Yt2/M53vpPOPvvsopfpT4AAAQIzEBBwzADPpQQIECBAoEcCAo6aix0bVq6xxhq1jPKHP/whxRfu2Pei6hahRuy7MSosGBawxMkvsbHqsBavisSpKnfffXclS9htt93Sox/96EruNftNIsg55phj0plnnln5vd2QAAECBIYLCDh8QggQIECAAIEcAQFHjtIM+iy77LJpxx13TPPNN98M7vLfl0agcdppp6VTTjllsIlmHS1eS4nXU2YSTiy44IJpl112SQsttNDQ+8TrNfGaTRXtWc96VnrFK15Rxa0eukfsE/K9732v0idNKp2gmxEgQKDjAgKOjhfY8ggQIECAQEUCAo6KIIfdJo563WqrrdJKK600o9EizLjooovSCSecMNgos64WJ4rEkxCxAeew9s1vfjOdd955Q/ustdZaadtttx3aJ9a1zz77pJtvvrmSJT31qU8d7MMRm4fOpN1///0pnlCJICk2RdUIECBAYDwCAo7xuBuVAAECBAi0TUDA0WDF4nWPeF0lgo7Y32LY3hazphVPa1x77bWDYCNeSWlic8t42uR1r3vd4CSXqY6GjdNHTj/99BQnp+S0eBpk/fXXn/Iplljf1VdfneLY2OmOcM0ZY84+salrOK+66qppxRVXHIQdORu9xtquuOKKwdMaEd7cddddZYZ3DQECBAhUKCDgqBDTrQgQIECAQIcFBBxjKm4cv7rooosOvnjHcbARKsw6pvS+++4bPDEQR5recMMNKZ4kGEeLOcZrJhFyxH/+97//PZhLfOkv+mpMhAvxqsqse8X1ca/Ye6OOPUTm9Jp1HOxiiy02WFNYx59YU4QaEa7EEyQRIMV/pxEgQIDA5AgIOCanFmZCgAABAgQmWUDAMcnVMTcCBAgQIEAgCTh8CAgQIECAAIEcAQFHjpI+BAgQIECAwNgEBBxjozcwAQIECBBo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SIAAAQIETgiUDxwnEJxBgAABAgQIvCvwz3/+8+vbt28/9cDv379//e9///upb/yYAAECBAgQqC/w+++/hw3xjx8/fvwIO93BBAgQIECAAAECBAgQIECAAIEEAYE7V3SKAAAB/ElEQVQjAdkVBAgQIECAAAECBAgQIECAQKyAwBHr63QCBAgQIECAAAECBAgQIEAgQUDgSEB2BQECBAgQIECAAAECBAgQIBArIHDE+jqdAAECBAgQIECAAAECBAgQSBAQOBKQXUGAAAECBAgQIECAAAECBAjECggcsb5OJ0CAAAECBAgQIECAAAECBBIEBI4EZFcQIECAAAECBAgQIECAAAECsQICR6yv0wkQIECAAAECBAgQIECAAIEEAYEjAdkVBAgQIECAAAECBAgQIECAQKyAwBHr63QCBAgQIECAAAECBAgQIEAgQUDgSEB2BQECBAgQIECAAAECBAgQIBArIHDE+jqdAAECBAgQIECAAAECBAgQSBAQOBKQXUGAAAECBAgQIECAAAECBAjECggcsb5OJ0CAAAECBAgQIECAAAECBBIEBI4EZFcQIECAAAECBAgQIECAAAECsQICR6yv0wkQIECAAAECBAgQIECAAIEEAYEjAdkVBAgQIECAAAECBAgQIECAQKyAwBHr63QCBAgQIECAAAECBAgQIEAgQUDgSEB2BQECBAgQIECAAAECBAgQIBArIHDE+jqdAAECBAgQIECAAAECBAgQSBAQOBKQXUGAAAECBAgQIECAAAECBAjECggcsb5OJ0CAAAECBAgQIECAAAECBBIE/g+qQGtj5SeutQAAAABJRU5ErkJggg=="
+                    );
+
+                
+                    // Set wrapping and repeating
+                prototype5x5G.wrapS = THREE.RepeatWrapping;
+                prototype5x5G.wrapT = THREE.RepeatWrapping;
+
+                // Texture Colors
+                const gplatmaterial = new THREE.MeshStandardMaterial({ map: prototype5x5G }); // GRAY
+
+                // Platform Shapes
+                const platSQgeometry = new THREE.BoxGeometry(10, 1, 10); // SQUARE
+                const platRECTgeometry = new THREE.BoxGeometry(7, 1, 10); // RECTANGLE
+                const platCUBEgeometry = new THREE.BoxGeometry(1, 1, 1); // CUBE
+
+                //box stuff
+                const cubeMaterial = new THREE.MeshStandardMaterial({ color: 'blue'})
+                const cubeGeometry = new THREE.BoxGeometry(0.25, 0.25, 0.25)
+ 
+        
+            
+            
+
+            /*Main Functions*/
+
+                let pcubeBodys = [], pcubeColliders = [], cubeMeshes = [];
+                const sceneMiddle = new THREE.Vector3(0, 0, 0);
+                const maxInstances = 1500; // Set a maximum number of instances
+                
+                //stuff
+                const sphereGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+                const boxGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+                const material = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+
+                const sphereInstancedMesh = new THREE.InstancedMesh(sphereGeometry, material, maxInstances);
+                const boxInstancedMesh = new THREE.InstancedMesh(boxGeometry, material, maxInstances);
+                sphereInstancedMesh.instanceMatrix.needsUpdate = true;
+                boxInstancedMesh.instanceMatrix.needsUpdate = true;
+                scene.add(sphereInstancedMesh);
+                scene.add(boxInstancedMesh);
+
+                gplatmaterial.metalness = 0; // No metallic reflection
+                gplatmaterial.roughness = 1;
+
+                let sphereCount = 0;
+                let boxCount = 0;
+                // stuff
+
+                let plats = [], cubes = [], spheres = [], lines = [], projectiles = [], enemies=[],enemyMeshes = [],ragEnemies = [];
+                let crosshair = (function(out) {
+                    out.crosshairCanvas = document.createElement("canvas");
+                    out.ctx = out.crosshairCanvas.getContext("2d");
+
+                    // Set canvas size
+                    out.crosshairCanvas.width = window.innerWidth;
+                    out.crosshairCanvas.height = window.innerHeight;
+                    out.crosshairCanvas.style.position = "fixed";
+                    out.crosshairCanvas.style.top = "50%";
+                    out.crosshairCanvas.style.left = "50%";
+                    out.crosshairCanvas.style.transform = "translate(-50%, -50%)";
+                    out.crosshairCanvas.style.pointerEvents = "none"; // Allows clicks to pass through
+                    out.crosshairCanvas.style.zIndex = "1000"; // Ensures it's on top
+
+                    document.body.appendChild(out.crosshairCanvas);
+
+                    out.update = function() {
+                        //out.crosshairCanvas.style.background = "rgba(255, 0, 0, 0.2)"; 
+                        out.crosshairCanvas.width = window.innerWidth;
+                        out.crosshairCanvas.height = window.innerHeight;
+
+                        out.ctx.clearRect(0, 0, out.crosshairCanvas.width, out.crosshairCanvas.height);
+                        out.ctx.strokeStyle = "white"; // Color 
+                        out.ctx.lineWidth = 2;
+
+                        const lineLength = 10;
+                        const centerW = out.crosshairCanvas.width / 2;
+                        const centerH = out.crosshairCanvas.height / 2;
+
+                        out.ctx.beginPath();
+                        out.ctx.moveTo(centerW - lineLength, centerH);
+                        out.ctx.lineTo(centerW + lineLength, centerH);
+                        out.ctx.stroke();
+
+                        out.ctx.beginPath();
+                        out.ctx.moveTo(centerW, centerH - lineLength);
+                        out.ctx.lineTo(centerW, centerH + lineLength);
+                        out.ctx.stroke();
+                    }
+                    return out;
+                 })({})
+                function spawnEnemy (pos={ x: 0, y: 5, z: 0 },gunID='hand') {
+                    let rigidS,rigidP,colliderS,colliderP,mesh,collBox,sensBox,gun;
+                    let rigidBodyDesc1 = RAPIER.RigidBodyDesc.dynamic().setTranslation(pos.x,pos.y,pos.z).setCanSleep(true).lockRotations().lockTranslations()
+                    rigidS = world.createRigidBody(rigidBodyDesc1);
+                    let colliderDesc1 = RAPIER.ColliderDesc.cuboid(1/2,2.1/2,0.25/2).setDensity(1).setSensor(true);
+                    colliderS = world.createCollider(colliderDesc1, rigidS);
+                    colliderS.userData = { id: "enemy" }; 
+                    rigidS.wakeUp();
+
+                    let rigidBodyDesc2 = RAPIER.RigidBodyDesc.dynamic().setTranslation(pos.x,pos.y,pos.z).setCanSleep(true).lockRotations()
+                    rigidP = world.createRigidBody(rigidBodyDesc2);
+                    let colliderDesc2 = RAPIER.ColliderDesc.cuboid(0.9/2,2.1/2,0.225/2).setDensity(1).setSensor(false);
+                    colliderP = world.createCollider(colliderDesc2, rigidP);
+                    colliderP.userData = { id: "enemy" }; 
+                    rigidP.wakeUp();
+
+                    mesh = drawEnemy(pos,0)
+                    if (gunID !== 'hand') {
+                        gun = guns.pistol.draw(pos,rigidP.rotation())
+                    }
+
+                    const geometryc = new THREE.BoxGeometry(1,2.1,0.25);
+
+                    const geometrys = new THREE.BoxGeometry( 0.9,2.1,0.225 );
+
+                    const materialo = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+                    materialo.transparent = true;
+
+                    const materialy = new THREE.MeshBasicMaterial( { color: 0x0000ff } );
+                    materialy.transparent = true;
+
+                    if (debug.hitboxes) {
+                        materialy.opacity = 0.5;
+                        materialo.opacity = 0.5;
+                    } else {
+                        materialy.opacity = 0;
+                        materialo.opacity = 0;
+                    }
+
+
+                    collBox = new THREE.Mesh( geometryc, materialo );
+                    sensBox = new THREE.Mesh( geometrys, materialy );
+                    scene.add( sensBox );                         
+                    scene.add( collBox ); 
+                    let shootcooldown = cooldown.create(309586,30);
+                    cooldown.activate(shootcooldown.id)
+
+                    function shoot() {
+                        if (gunID === 'pistol' && pose == 1) {                                        
+                            if (cooldown.check(shootcooldown.id)) {
+                                if (cooldown.check(shootcooldown.id)) {
+                                guns.pistol.shoot(mesh.cam,shootcooldown.id,true);
+                                }
+                            }
+                        } 
+                     }
+                    function destroy() {
+                        let {x,y,z} = rigidP.translation()
+
+                        if (colliderP) {
+                            world.removeCollider(colliderP); 
+                            colliderP = undefined
+                        }                           
+                        if (rigidP) {
+                            world.removeRigidBody(rigidP); 
+                            rigidP = undefined
+                        }                      
+                        if (colliderS) {
+                            world.removeCollider(colliderS); 
+                            colliderS= undefined
+                        }                           
+                        if (rigidS) {
+                            world.removeRigidBody(rigidS); 
+                            rigidS= undefined
+                        }                            
+                        if (mesh) {
+                            scene.remove(mesh.enemy)
+                            mesh= undefined
+                            }
+                        if (gun){
+                            scene.remove(gun.gun)
+                            gun = undefined
+                        }                            
+                        enemies[numberenemy] = undefined
+
+                        spawnEnemyRag({x:x,y:y,z:z})
+                    }
+                
+                    function checkCollision() {
+                        if (!rigidP || !mesh || !mesh.enemy.parent) return;
+
+                        world.intersectionsWith(colliderS, (otherCollider) => {                                
+                            if (otherCollider.userData.id == 'bullet') {
+                                destroy(); 
+                            }
+                            return;
+                        });
+                    }
+
+                    let swayOffset = 0,pose=0;
+                    function update() {
+                        shoot()
+                        let{x,y,z} = rigidP.translation()
+                        let playerPosition = player.body.translation()
+
+                        if (gunID !== 'hand' && pose == 1) {
+                            gun.gun.visible = true;
+                            gun.update(rigidP.translation(),mesh.enemy.quaternion)
+                        } else if (gunID !== 'hand' && pose!=1) {
+                            gun.gun.visible = false;
+                        }
+                        //player.body.setTranslation(gun.gun.position)
+                        //rigidP.setLinvel({  x: 2,  y: 2,  z: 2  });
+
+
+                        if (debug.hitboxes) {
+                            collBox.material.opacity = 0.5;
+                            sensBox.material.opacity = 0.5;
+                        } else {
+                            collBox.material.opacity = 0;
+                            sensBox.material.opacity = 0;
+                        }
+
+                        let direction = new THREE.Vector3(
+                            playerPosition.x - x,
+                            playerPosition.y - y,
+                            playerPosition.z - z
+                        ).normalize();
+
+
+                        const enemySpeed = 1.0; 
+                        let vel = direction.multiplyScalar(enemySpeed);
+
+                        let rayOrigin =  rigidP.translation();
+                        let size = colliderP.halfExtents();
+                        let rays = [];
+                        const rayDistance = 1.5; 
+
+                        rays[0] = new RAPIER.Ray(
+                            new THREE.Vector3( rayOrigin.x + -direction.x * rayDistance, rayOrigin.y - size.y, rayOrigin.z + -direction.z * rayDistance),
+                            new THREE.Vector3(0, -1, 0) // Downward
+                        );
+                        rays[1] = new RAPIER.Ray(
+                            new THREE.Vector3( x + 0.1 * (playerPosition.x - x), y+ 0.1 * (playerPosition.y - y), z+ 0.1 * (playerPosition.z - z) ),
+                            new THREE.Vector3(
+                                playerPosition.x - x,
+                                playerPosition.y - y,
+                                playerPosition.z - z
+                            ).normalize()
+                        );
+
+                        // Debug visualization
+                        if (debug.lines) {
+                            drawDebugLine(scene, [rays[0].origin, new THREE.Vector3(rays[0].origin.x, rays[0].origin.y-1, rays[0].origin.z)]);
+                            drawDebugLine(scene, [
+                                rays[1].origin, 
+                                new THREE.Vector3(
+                                    playerPosition.x, 
+                                    playerPosition.y,  
+                                    playerPosition.z
+                                )
+                            ]);
+                        }
+
+                        let hits = [];
+                        hits[0] = world.castRay(rays[0], 1.1, true);
+                        hits[1] = world.castRay(rays[1], 1.1, true);
+
+                        let trueHits = 0;
+                        if (hits[0] && hits[0].collider && hits[0].toi < 1) { //hits[0].toi > 0.001 && hits[0].toi < 0.1) {
+                            trueHits++;
+                        }  
+                        if (hits[1] && hits[1].collider && hits[1].collider.userData.id !== 'player'&& hits[1].collider.userData.id !== 'enemy' || collBox.position.distanceTo(player.body.translation()) > 10) { //hits[1].toi > 0.001 && hits[1].toi < 0.1) {
+                            if (trueHits == 1) {
+                                rigidP.applyImpulse({  x: vel.x * 2,  y: 0,  z: vel.z * 2  });
+                                pose=0
+                            } else {
+                                //rigidP.setLinvel({  x: 0,  y: 0,  z: 0  });
+                                pose=1
+                            }       
+                        } else {
+                            //rigidP.setLinvel({  x: 0,  y: rigidP.linvel().y,  z: 0  });
+                            pose=1               
+                        }
+
+                        
+                        rigidS.setTranslation(rigidP.translation())
+                        rigidS.setRotation(rigidP.rotation())
+                        x = rigidP.translation().x;      
+                        y = rigidP.translation().y;      
+                        z = rigidP.translation().z;      
+                        mesh.update(pose,x,y,z)
+
+                        rigidP.setRotation(mesh.enemy.quaternion)
+                        collBox.position.copy(colliderP.translation())
+                        collBox.quaternion.copy(colliderP.rotation())
+                        sensBox.position.copy(colliderS.translation())
+                        sensBox.quaternion.copy(colliderS.rotation())
+
+                        checkCollision()
+                    }
+                    let numberenemy = enemies.length
+                    enemies.push({rigidP,colliderP,mesh,gun,update})
+                    return {rigidP,colliderP,mesh,update}
+                 }
+                function drawEnemy (position = { x: 0, y: 5, z: 0 },pose=0) {
+                    let enemy = new THREE.Group();
+                    position.y -= 5;
+                    enemy.position.copy( position );
+                    position = {x:0,y:0,z:0}
+
+                    const torsoSize = { x: 0.6, y: 0.75, z: 0.25 };
+                    const limbSize = { x: 0.25, y: 0.75, z: 0.25 };
+                    const headRadius = 0.3;
+
+                    function createBox(size, pos, color=0x0000ff, rot=new THREE.Quaternion(0,0,0,1)) {
+                        let geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+                        let material = new THREE.MeshStandardMaterial({ color });
+                        let mesh = new THREE.Mesh(geometry, material);
+                        mesh.quaternion.set(rot.x, rot.y, rot.z, rot.w)
+                        mesh.position.set(pos.x, pos.y, pos.z);
+                        enemy.add(mesh);
+
+                        return mesh
+                     }
+
+                    function createSphere(radius, pos, color=0x0000ff, rot=new THREE.Quaternion(0,0,0,1)) {
+                        let geometry = new THREE.SphereGeometry(radius);
+                        let material = new THREE.MeshStandardMaterial({ color });
+                        let mesh = new THREE.Mesh(geometry, material);
+                        mesh.quaternion.set(rot.x, rot.y, rot.z, rot.w)
+                        mesh.position.set(pos.x, pos.y, pos.z);
+                        enemy.add(mesh);
+
+                        return mesh
+                     }
+
+                    
+                     let quaternion1 = new THREE.Quaternion();
+                    let quaternion2 = new THREE.Quaternion();
+                    let axis = new THREE.Vector3(0, 1, 0); // Y-axis
+                    let angle1 = THREE.MathUtils.degToRad(25); // Convert 45 degrees to radians
+                    let angle2 = THREE.MathUtils.degToRad(-25); // Convert 45 degrees to radians
+                    quaternion1.setFromAxisAngle(axis, angle1);
+                    quaternion2.setFromAxisAngle(axis, angle2);
+
+                    let torso = createBox(torsoSize, { x: position.x          , y: position.y       , z: position.z }, 0x0000ff,new THREE.Quaternion(0,0,0,1));
+                    let leftLeg = createBox(limbSize, { x: position.x - (1/6) , y: position.y - 0.75, z: position.z }, 0x0000ff,quaternion1);
+                    let rightLeg = createBox(limbSize, { x: position.x + (1/6), y: position.y - 0.75, z: position.z }, 0x0000ff,quaternion2);
+                    let leftArm = createBox(limbSize, { x: position.x - 0.4  , y: position.y       , z: position.z }, 0x0000ff,new THREE.Quaternion(0,0,0,1));
+                    let rightArm = createBox(limbSize, { x: position.x + 0.4 , y: position.y       , z: position.z }, 0x0000ff,new THREE.Quaternion(0,0,0,1));
+                    let head = createSphere(headRadius, { x: position.x       , y: position.y + 0.65, z: position.z }, 0x0000ff,new THREE.Quaternion(0,0,0,1));
+                    let cam = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 5000 );
+                    scene.add(cam)
+
+                    scene.add( enemy )
+                    function applyPose(pose=0) {
+                        if (pose == 1) {
+                            let center = enemy.position
+                            let rot = enemy.quaternion
+
+                            let offsets = {
+                                rl: new THREE.Vector3(  1.1/6,  -0.75,  0 ),
+                                ll: new THREE.Vector3( -1.1/6,  -0.75,  0 ),
+                                t:  new THREE.Vector3(    0,     0 ,  0 ),
+                                la: new THREE.Vector3( -0.25,     0.2 ,  0.35 ),
+                                ra: new THREE.Vector3(  0.25,     0.2 ,  0.35 ),
+                                h:  new THREE.Vector3(    0,  0.65 ,  0 )
+                            }
+
+                            rightLeg.position.copy(offsets.rl)
+                            leftLeg.position.copy(offsets.ll)
+                            torso.position.copy(offsets.t)
+                            leftArm.position.copy(offsets.la)
+                            rightArm.position.copy(offsets.ra)
+                            head.position.copy(offsets.h)
+                            
+                            let axes = {
+                                x: new THREE.Vector3(1,0,0),
+                                y: new THREE.Vector3(0,1,0),
+                                z: new THREE.Vector3(0,0,1)
+                            }
+
+                            let rots1 = {
+                                rl: new THREE.Quaternion().setFromAxisAngle(axes.y, Math.PI / -25),
+                                ll: new THREE.Quaternion().setFromAxisAngle(axes.y, Math.PI / 25),
+                                t:  new THREE.Quaternion(), 
+                                la: new THREE.Quaternion().setFromAxisAngle(axes.x, Math.PI / -2),
+                                ra: new THREE.Quaternion().setFromAxisAngle(axes.x, Math.PI / -2),
+                                h:  new THREE.Quaternion()
+                            };
+
+                            let rots2 = {
+                                rl: new THREE.Quaternion(), 
+                                ll: new THREE.Quaternion(),
+                                t:  new THREE.Quaternion(),
+                                la: new THREE.Quaternion().setFromAxisAngle(axes.y, Math.PI /  6),
+                                ra: new THREE.Quaternion().setFromAxisAngle(axes.y, Math.PI / -6),
+                                h:  new THREE.Quaternion()
+                            };
+
+                            // Multiply in correct order & avoid modifying original quaternions
+                            let combinedRots = {
+                                rl: rots2.rl.clone().multiply(rots1.rl),
+                                ll: rots2.ll.clone().multiply(rots1.ll),
+                                t:  rots2.t.clone().multiply(rots1.t),
+                                la: rots2.la.clone().multiply(rots1.la),
+                                ra: rots2.ra.clone().multiply(rots1.ra),
+                                h:  rots2.h.clone().multiply(rots1.h)
+                            };
+
+                            
+                            rightLeg.quaternion.copy(combinedRots.rl)
+                            leftLeg.quaternion.copy(combinedRots.ll)
+                            torso.quaternion.copy(combinedRots.t)
+                            leftArm.quaternion.copy(combinedRots.la)
+                            rightArm.quaternion.copy(combinedRots.ra)
+                            head.quaternion.copy(combinedRots.h)
+
+                        } else if (pose == 0){
+                            let center = enemy.position
+                            let rot = enemy.quaternion
+
+                            let offsets = {
+                                rl: new THREE.Vector3(  1.1/6,-0.75,   0),
+                                ll: new THREE.Vector3( -1.1/6,-0.75,   0),
+                                t:  new THREE.Vector3(      0, -0.1,0.15),
+                                la: new THREE.Vector3(  -0.45,  0.3,   0),
+                                ra: new THREE.Vector3(   0.45,  0.3,   0),
+                                h:  new THREE.Vector3(      0, 0.45, 0.5)
+                            }
+
+                            rightLeg.position.copy(offsets.rl)
+                            leftLeg.position.copy(offsets.ll)
+                            torso.position.copy(offsets.t)
+                            leftArm.position.copy(offsets.la)
+                            rightArm.position.copy(offsets.ra)
+                            head.position.copy(offsets.h)
+
+                            let axes = {
+                                x: new THREE.Vector3(1,0,0),
+                                y: new THREE.Vector3(0,1,0),
+                                z: new THREE.Vector3(0,0,1)
+                            }
+
+                            let rots1 = {
+                                rl: new THREE.Quaternion().setFromAxisAngle(axes.y, Math.PI / -25),
+                                ll: new THREE.Quaternion().setFromAxisAngle(axes.y, Math.PI / 25),
+                                t:  new THREE.Quaternion().setFromAxisAngle(axes.x, Math.PI / 6), 
+                                la: new THREE.Quaternion().setFromAxisAngle(axes.z, Math.PI / 12),
+                                ra: new THREE.Quaternion().setFromAxisAngle(axes.z, Math.PI / -12),
+                                h:  new THREE.Quaternion()
+                            };
+
+                            let rots2 = {
+                                rl: new THREE.Quaternion(), 
+                                ll: new THREE.Quaternion(),
+                                t:  new THREE.Quaternion(),
+                                la: new THREE.Quaternion().setFromAxisAngle(axes.x, Math.PI / -3),
+                                ra: new THREE.Quaternion().setFromAxisAngle(axes.x, Math.PI / -3),
+                                h:  new THREE.Quaternion()
+                            };
+
+                            // Multiply in correct order & avoid modifying original quaternions
+                            let combinedRots = {
+                                rl: rots2.rl.clone().multiply(rots1.rl),
+                                ll: rots2.ll.clone().multiply(rots1.ll),
+                                t:  rots2.t.clone().multiply(rots1.t),
+                                la: rots2.la.clone().multiply(rots1.la),
+                                ra: rots2.ra.clone().multiply(rots1.ra),
+                                h:  rots2.h.clone().multiply(rots1.h)
+                            };
+
+                            
+                            rightLeg.quaternion.copy(combinedRots.rl)
+                            leftLeg.quaternion.copy(combinedRots.ll)
+                            torso.quaternion.copy(combinedRots.t)
+                            leftArm.quaternion.copy(combinedRots.la)
+                            rightArm.quaternion.copy(combinedRots.ra)
+                            head.quaternion.copy(combinedRots.h)
+
+                        } else if (pose == 2){
+                            let center = enemy.position
+                            let rot = enemy.quaternion
+
+                            let offsets = {
+                                rl: new THREE.Vector3(  1.1/6,  -0.75,  0 ),
+                                ll: new THREE.Vector3( -1.1/6,  -0.75,  0 ),
+                                t:  new THREE.Vector3(    0,     0 ,  0 ),
+                                la: new THREE.Vector3( -0.45,     0 ,  0 ),
+                                ra: new THREE.Vector3(  0.45,     0 ,  0 ),
+                                h:  new THREE.Vector3(    0,  0.65 ,  0 )
+                            }
+
+                            rightLeg.position.copy(offsets.rl)
+                            leftLeg.position.copy(offsets.ll)
+                            torso.position.copy(offsets.t)
+                            leftArm.position.copy(offsets.la)
+                            rightArm.position.copy(offsets.ra)
+                            head.position.copy(offsets.h)
+
+                            
+                            let axes = {
+                                x: new THREE.Vector3(1,0,0),
+                                y: new THREE.Vector3(0,1,0),
+                                z: new THREE.Vector3(0,0,1)
+                            }
+
+                            let rots1 = {
+                                rl: new THREE.Quaternion().setFromAxisAngle(axes.y, Math.PI / -25),
+                                ll: new THREE.Quaternion().setFromAxisAngle(axes.y, Math.PI / 25),
+                                t:  new THREE.Quaternion(), 
+                                la: new THREE.Quaternion().setFromAxisAngle(axes.y, Math.PI / 12),
+                                ra: new THREE.Quaternion().setFromAxisAngle(axes.y, Math.PI / -12),
+                                h:  new THREE.Quaternion()
+                            };
+
+                            let rots2 = {
+                                rl: new THREE.Quaternion(), 
+                                ll: new THREE.Quaternion(),
+                                t:  new THREE.Quaternion(),
+                                la: new THREE.Quaternion().setFromAxisAngle(axes.x, Math.PI / 90),
+                                ra: new THREE.Quaternion().setFromAxisAngle(axes.x, Math.PI / 90),
+                                h:  new THREE.Quaternion()
+                            };
+
+                            // Multiply in correct order & avoid modifying original quaternions
+                            let combinedRots = {
+                                rl: rots2.rl.clone().multiply(rots1.rl),
+                                ll: rots2.ll.clone().multiply(rots1.ll),
+                                t:  rots2.t.clone().multiply(rots1.t),
+                                la: rots2.la.clone().multiply(rots1.la),
+                                ra: rots2.ra.clone().multiply(rots1.ra),
+                                h:  rots2.h.clone().multiply(rots1.h)
+                            };
+
+                            
+                            rightLeg.quaternion.copy(combinedRots.rl)
+                            leftLeg.quaternion.copy(combinedRots.ll)
+                            torso.quaternion.copy(combinedRots.t)
+                            leftArm.quaternion.copy(combinedRots.la)
+                            rightArm.quaternion.copy(combinedRots.ra)
+                            head.quaternion.copy(combinedRots.h)
+                        }
+                    }
+                    
+                    let somevar = 0;
+                    let swayOffset = 0
+                    enemy.position.copy(torso.position)
+                    enemy.quaternion.copy(torso.quaternion)
+
+                    function update (pose=0,x=0,y=0,z=0) {
+
+                        
+                        swayOffset += 0.09; 
+                        let swayAmount = Math.sin(swayOffset) * 2; 
+
+                        let right = new THREE.Vector3(1, 0, 0); 
+                        right.applyQuaternion(enemy.quaternion); 
+
+                        let swayVector = right.multiplyScalar(swayAmount);
+                        
+                        enemy.position.set(x, y, z);  
+                        let targetPosition     
+                        if (pose == 0){
+                            targetPosition = new THREE.Vector3(player.body.translation().x+ swayVector.x, enemy.position.y, player.body.translation().z+ swayVector.z);
+                        } else {
+                            targetPosition = new THREE.Vector3(player.body.translation().x, enemy.position.y, player.body.translation().z);
+                        }
+                        enemy.lookAt(targetPosition); 
+
+                        applyPose(pose)
+
+                        targetPosition = new THREE.Vector3(player.body.translation().x, player.body.translation().y, player.body.translation().z);
+
+                        cam.position.copy(enemy.position)
+                        cam.quaternion.copy(enemy.quaternion)
+                        cam.lookAt(targetPosition)
+                     }
+                     enemyMeshes.push({ enemy , update })
+
+                     return { enemy , update , torso, rightArm, leftArm, head, leftLeg, rightLeg, cam}
+                    
+                 }
+                function spawnEnemyRag(position = { x: 0, y: 5, z: 0 }) {
+                    let enemy = new THREE.Group();
+                    scene.add( enemy );
+
+                    let physicsBodies = [];
+
+                    // Define sizes
+                    const torsoSize = { x: 0.5, y: 1, z: 0.25 };
+                    const limbSize = { x: 0.25, y: 0.75, z: 0.25 };
+                    const headRadius = 0.3;
+
+                    // Create physics world reference
+                    let bodyDesc, colliderDesc, rigidBody;
+                    
+                    function createBox(size, pos, color) {
+                        let geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+                        let material = new THREE.MeshStandardMaterial({ color });
+                        let mesh = new THREE.Mesh(geometry, material);
+                        mesh.position.set(pos.x, pos.y, pos.z);
+                        enemy.add(mesh);
+
+                        // Create physics body
+                        bodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(pos.x, pos.y, pos.z);
+                        rigidBody = world.createRigidBody(bodyDesc);
+                        rigidBody.wakeUp()
+                        colliderDesc = RAPIER.ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2);
+                        let collider = world.createCollider(colliderDesc, rigidBody);
+                        collider.userData = { id: "movable_object" }; 
+                        physicsBodies.push({ rigidBody, collider });
+
+                        return rigidBody;
+                     }
+
+                    function createSphere(radius, pos, color) {
+                        let geometry = new THREE.SphereGeometry(radius);
+                        let material = new THREE.MeshStandardMaterial({ color });
+                        let mesh = new THREE.Mesh(geometry, material);
+                        mesh.position.set(pos.x, pos.y, pos.z);
+                        enemy.add(mesh);
+
+                        // Create physics body
+                        bodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(pos.x, pos.y, pos.z);
+                        rigidBody = world.createRigidBody(bodyDesc);
+                        rigidBody.wakeUp()
+                        colliderDesc = RAPIER.ColliderDesc.ball(radius);
+                        let collider = world.createCollider(colliderDesc, rigidBody);
+                        collider.userData = { id: "movable_object" }; 
+                        physicsBodies.push({ rigidBody, collider });
+
+                        return rigidBody;
+                     }
+
+                     // Create half-sized body parts
+                    let torso = createBox(torsoSize, { x: position.x, y: position.y, z: position.z }, 0x0000ff);
+                    let leftLeg = createBox(limbSize, { x: position.x - 0.25, y: position.y - 1, z: position.z }, 0x0000ff);
+                    let rightLeg = createBox(limbSize, { x: position.x + 0.25, y: position.y - 1, z: position.z }, 0x0000ff);
+                    let leftArm = createBox(limbSize, { x: position.x - 0.6, y: position.y + 0.1, z: position.z }, 0x0000ff);
+                    let rightArm = createBox(limbSize, { x: position.x + 0.6, y: position.y + 0.1, z: position.z }, 0x0000ff);
+                    let head = createSphere(headRadius, { x: position.x, y: position.y + 1, z: position.z }, 0x0000ff);
+
+
+                    // Add joints to connect parts
+                    function createJoint(bodyA, bodyB, anchorA, anchorB) {
+                        let params = RAPIER.JointData.spherical(anchorA, anchorB); // Use a spherical joint
+                        world.createImpulseJoint(params, bodyA, bodyB, true);
+                    }
+                    function update () {
+                        for (let i = 0; i < physicsBodies.length; i++) {
+                            let { rigidBody } = physicsBodies[i];
+
+                            if (enemy.children[i]) {
+                                    
+                                    let position = rigidBody.translation();
+                                    let rotation = rigidBody.rotation();
+
+                                    enemy.children[i].position.set(position.x, position.y, position.z);
+                                    enemy.children[i].quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+                                
+                            }
+                        }
+                    }
+
+                    createJoint(torso, leftLeg, { x: -0.25, y: -0.5, z: 0 }, { x: 0, y: 0.375, z: 0 });
+                    createJoint(torso, rightLeg, { x: 0.25, y: -0.5, z: 0 }, { x: 0, y: 0.375, z: 0 });
+                    createJoint(torso, leftArm, { x: -0.3, y: 0.25, z: 0 }, { x: 0.125, y: 0, z: 0 });
+                    createJoint(torso, rightArm, { x: 0.3, y: 0.25, z: 0 }, { x: -0.125, y: 0, z: 0 });
+                    createJoint(torso, head, { x: 0, y: 0.5, z: 0 }, { x: 0, y: -0.3, z: 0 });
+
+                    let meshes = []
+                    enemy.children.forEach(mesh=>{
+                        meshes.push(mesh)
+                    })
+                    ragEnemies.push({enemy, physicsBodies, update, meshes})
+                    return { enemy, physicsBodies, update, meshes};
+                 }
+                function explosion(position, power, range) {
+                    world.forEachRigidBody((body) => { 
+                        if (!body) return;
+
+                        const explosionCenter = new THREE.Vector3(position.x, position.y, position.z);                         
+                        const bodyPosition = body.translation();                         
+                        const bodyVector = new THREE.Vector3(bodyPosition.x, bodyPosition.y, bodyPosition.z);                         
+                        const distance = explosionCenter.distanceTo(bodyVector);                      
+
+                        if (distance > range || distance === 0) return; // Ignore if out of range or at the explosion center
+
+                        // Calculate explosion force
+                        const forceDirection = bodyVector.sub(explosionCenter).normalize();
+                        const forceMagnitude = (1 - distance / range) * power; // Linear falloff
+                        const force = forceDirection.multiplyScalar(forceMagnitude);
+
+                        // Apply impulse to the body
+                        body.applyImpulse({ x: force.x, y: force.y, z: force.z }, true);
+                        });
+
+                 }
+
+
+                function drawDebugLine(scene, points, color = 0xffffff, num = lines.length) {
+                    const geometry = new THREE.BufferGeometry();
+                    geometry.setFromPoints( points );
+                    const material = new THREE.LineBasicMaterial({ color: color });
+
+                    const line = new THREE.Line(geometry, material);                    
+                    scene.add(line);
+
+                    if (lines.length === num) {
+                        lines.push( line );
+                    } else {
+                        lines[num] = ( line );
+                    }
+
+                    return line;
+                 }
+                
+                function addGround(pos={x:0,y:0,z:0}, size={x:1000,z:1000}, texture = "GRAY") {
+                    let newMaterial;
+                    switch (texture) {
+                        case "GRAY":
+                            newMaterial = gplatmaterial;
+                            newMaterial.side = THREE.FrontSide; // Only visible from above
+                            newMaterial.metalness = 0; // Remove reflections
+                            newMaterial.roughness = 1;
+                            break;
+                    }
+
+                    // Create a large plane geometry
+                    let geometry = new THREE.PlaneGeometry(size.x, size.z);
+                    
+                    // Adjust UV mapping manually for tiling
+                    let uvAttribute = geometry.getAttribute("uv");
+                    for (let i = 0; i < uvAttribute.count; i++) {
+                        let uv = new THREE.Vector2(uvAttribute.getX(i), uvAttribute.getY(i));
+                        uv.multiply(new THREE.Vector2(size.x , size.z )); // Adjust tiling
+                        uvAttribute.setXY(i, uv.x, uv.y);
+                    }
+                    uvAttribute.needsUpdate = true;
+
+                    let mesh = new THREE.Mesh(geometry, newMaterial);
+                    mesh.position.set(pos.x, pos.y, pos.z);
+                    mesh.rotation.x = -Math.PI / 2; // Make it horizontal
+
+                    scene.add(mesh);
+
+                    // Physics (static rigid body)
+                    let rigidBodyDesc = RAPIER.RigidBodyDesc.fixed()
+                        .setTranslation(pos.x, pos.y, pos.z);
+                    let rigid = world.createRigidBody(rigidBodyDesc);
+                    
+                    let colliderDesc = RAPIER.ColliderDesc.cuboid(size.x / 2, 0.01, size.z / 2);
+                    world.createCollider(colliderDesc, rigid);
+
+                    return { mesh, rigid };
+                 }
+
+                function addPlatform (pos, rot, size,color="GRAY",collisions=true ) {
+                    let rttx = rot.x * pi/180
+                    let rtty = rot.y * pi/180
+                    let rttz = rot.z * pi/180;
+
+                    let newMaterial;
+                    switch (color) {
+                        case"GRAY":
+                        newMaterial = gplatmaterial;
+                    }
+
+
+                    let geometry = new THREE.BoxGeometry(size.x,size.y,size.z);
+                    let mesh = new THREE.Mesh(geometry, newMaterial);
+                    mesh.position.set(pos.x, pos.y, pos.z);
+                    mesh.rotateX(rttx);
+                    mesh.rotateY(rtty);
+                    mesh.rotateZ(rttz);
+                    resize(mesh, 1, 1, 1, true);
+                    cubeMeshes.push(mesh);
+
+
+
+                    // physics
+                    let rigid,collider,num,colliderDesc,rigidBodyDesc
+                    //if (collisions) {
+                    rigidBodyDesc = RAPIER.RigidBodyDesc.fixed()
+                            .setTranslation(pos.x, pos.y, pos.z)
+                            .setRotation(mesh.quaternion);
+                    rigid = world.createRigidBody(rigidBodyDesc);
+                    colliderDesc = RAPIER.ColliderDesc.cuboid(size.x/2, size.y/2, size.z/2);
+                    collider = world.createCollider(colliderDesc, rigid);
+                    num = plats.length;
+                    collider.userData = { id: "unmovable_object" }; 
+                    //} else {
+                        num = plats.length
+                    //}
+
+                    function update () {
+                        if (rigid !== undefined) {
+                            rigid.resetForces(true); 
+                            let { x, y, z } = rigid.translation();
+                            let rot = rigid.rotation();
+                            let xr = rot.x, yr = rot.y, zr = rot.z, wr = rot.w;
+                            mesh.position.set(x, y, z);
+                            mesh.quaternion.set(xr, yr, zr, wr);
+                            if (rigid.translation().y < -50) {
+                                    world.removeRigidBody(rigid);
+                                    scene.remove(mesh);
+                                    plats[num] = undefined;
+                            }
+                        }
+                    }
+                    plats.push({ mesh, rigid, update, num, collider });
+                    scene.add(mesh);
+                    return { mesh, rigid, update, num, collider };
+                 }
+
+                function addPBall(x, y, z,radius=0.25) {
+                    const density = 20;
+
+                    // Physics
+                    let rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setCanSleep(true);
+                    let rigid = world.createRigidBody(rigidBodyDesc);
+                    let colliderDesc = RAPIER.ColliderDesc.ball(radius).setDensity(density);
+                    let collider = world.createCollider(colliderDesc, rigid);
+                    rigid.wakeUp();
+                    collider.userData = { id: "movable_object" }; 
+
+                    // Mesh
+                    const geometry = new THREE.SphereGeometry(radius, 32, 32);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: 0x0000ff,
+                        flatShading: true
+                    });
+                    const mesh = new THREE.Mesh(geometry, material);
+
+                    let num = spheres.length;
+
+
+                    function update() {
+                        if (rigid !== undefined) {
+                            rigid.resetForces(true);
+                            let { x, y, z } = rigid.translation();
+                            let rot = rigid.rotation();
+                            let xr = rot.x, yr = rot.y, zr = rot.z, wr = rot.w;
+
+                            mesh.position.set(x, y, z);
+                            mesh.quaternion.set(xr, yr, zr, wr);
+
+                            if (y < -100) {
+                                world.removeRigidBody(rigid);
+                                scene.remove(mesh);
+                                spheres[num] = undefined;
+                            }
+                        }
+                    }
+
+                    spheres.push({ mesh, rigid, colliderDesc,update });
+                    scene.add(mesh);
+                    return { mesh, rigid, colliderDesc,update };
+                 }
+                function addPCube(x,y,z) {
+
+                    const range = 7;
+                    const density = 20;
+                    // physics
+                    let rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setCanSleep(true)
+                    let rigid = world.createRigidBody(rigidBodyDesc);
+                    let colliderDesc = RAPIER.ColliderDesc.cuboid(0.25,0.25,0.25).setDensity(density);
+                    let collider = world.createCollider(colliderDesc, rigid);
+                    rigid.wakeUp();
+                    collider.userData = { id: "movable_object" }; 
+                
+                    //Mesh
+                    
+                    const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+
+                    const material = new THREE.MeshStandardMaterial({
+                    color: 0x0000ff,
+                    flatShading: true
+                    });
+
+                    const mesh = new THREE.Mesh(geometry, material);
+                    let num = cubes.length;
+
+                    
+                    function update () {
+                        if (rigid !== undefined) {
+                            rigid.resetForces(true); 
+                            let { x, y, z } = rigid.translation();
+                            let rot = rigid.rotation();
+                            let xr = rot.x, yr = rot.y, zr = rot.z, wr = rot.w;
+                            let pos = new THREE.Vector3(x, y, z);
+                            mesh.position.set(x, y, z);
+                            mesh.quaternion.set(xr, yr, zr, wr);
+
+                            if (y < -100) {
+                                    world.removeRigidBody(rigid);
+                                    scene.remove(mesh);
+                                    cubes[num] = undefined;
+                            }
+
+                        }
+                    }
+                    cubes.push({ mesh, rigid, colliderDesc, update });
+                    scene.add(mesh);
+                    return { mesh, rigid, colliderDesc, update };
+                 }
+                    
+                function updatePhysicsObjects(){
+                    for (var i = 0; i < cubes.length; i++) {
+                        if (cubes[i] !== undefined && cubes.length !== 0) {
+                            cubes[i].update();
+                        }
+                    }
+                    for (var i = 0; i < plats.length; i++) {
+                        if (plats[i] !== undefined && plats.length !== 0) {
+                            plats[i].update();
+                        }
+                    }
+                    for (var i = 0; i < spheres.length; i++) {
+                        if (spheres[i] !== undefined && spheres.length !== 0) {
+                            spheres[i].update();
+                        }
+                    }
+                    for (var i = 0; i < projectiles.length; i++) {
+                        if (projectiles[i]!==undefined && projectiles.length!==0) {
+                            projectiles[i].update();
+                        }
+                    }
+                    for (var i = 0; i < ragEnemies.length; i++) {
+                        if (ragEnemies[i]!==undefined && ragEnemies.length!==0) {
+                            ragEnemies[i].update();
+                        }
+                    }
+                    for (var i = 0; i < enemies.length; i++) {
+                        if (enemies[i]!==undefined && enemies.length!==0) {
+                            enemies[i].update();
+                        }
+                    }
+                 }
+                
+                
+               
+                function addSkybox(angle) {
+                    const sky = new Sky();
+                    sky.scale.setScalar( 450000 );
+
+                    const phi = angle * pi/180//MathUtils.degToRad( 90 );
+                    const theta = 180 * pi/180//MathUtils.degToRad( 180 );
+                    const sunPosition = new THREE.Vector3().setFromSphericalCoords( 10, phi, theta );
+
+                    sky.material.uniforms.sunPosition.value = sunPosition;
+
+                    scene.add( sky );
+                 }
+
+            /*Controls*/
+
+                let width=window.innerWidth
+                let height=window.innerHeight
+                let aspect=width/height
+
+                /*math*/
+                    let F=(function(out){
+                        
+                        out.constrain=function(x,a,b){
+                            
+                            return x<a?a:x>b?b:x
+                        }
+                        
+                        out.deg=function(x){
+                            
+                            return x*57.29577951
+                        }
+                        
+                        out.rad=function(x){
+                            
+                            return a*0.01745329252
+                        }
+                        
+                        return out
+                        
+                    })({})
+
+                    function rad(a){
+                        //0.01745329252=pi/180
+                        return a*0.01745329252
+                    }
+                    
+                    function deg(a){
+                        //57.29577951=180/pi
+                        return a*57.29577951
+                    }
+                    
+                    function constrain(x,a,b){
+                        
+                        return x<a?a:x>b?b:x
+                    }
+                    
+                    function random(a,b){
+                        
+                        return Math.random()*(b-a)+a
+                    }
+                    
+                    function pointInBox(_x,_y,_z,x,y,z,w,h,l){
+                        
+                        return _x>x-w&&_x<x+h&&_y>y-h&&_y<y+h&&_z>z-l&&_z<z+l
+                    }
+                    
+                    function pointInBounds(x,y,z,minX,maxX,minY,maxY,minZ,maxZ){
+                        
+                        return x>=minX&&x<=maxX&&y>=minY&&y<=maxY&&z>=minZ&&z<=maxZ
+                    }
+                    
+                    //for some reason theres no Math.lerp
+                    function lerp(a,b,x){
+                        
+                        return x*(b-a)+a
+                    }
+                /*player*/
+
+                    let player=(function(out){
+                        out.setPlayer = function(x,y,z,camera,world, xwidth=1, height=2, zwidth=1) {
+                            out.sx=x
+                            out.sy=y
+                            out.sz=z
+                            out.x=x
+                            out.y=y
+                            out.z=z                   
+                            out.camera= camera
+                            out.world= world
+                            out.height= height / 2
+                            out.xWidth= xwidth / 2
+                            out.zWidth= zwidth / 2
+                            out.fric=0.9
+                            out.airFric=0.15
+                            out.crouching=false
+                            out.crouch_friction=0.9                                
+                            out.walkSpeed= 5.5
+                            out.jumpPower= 27
+                            out.yaw=0
+                            out.pitch=0
+                            out.sensitivity=0.005
+                            out.fov=70
+                            out.radius=0.5
+                            out.dead= false
+                            out.rigid= RAPIER.RigidBodyDesc.dynamic().setTranslation(x,y,z).setGravityScale(0.3)
+                            out.rigidS= RAPIER.RigidBodyDesc.dynamic().setTranslation(x,y,z).setGravityScale(0.3)
+                            out.body = out.world.createRigidBody(out.rigid);
+                            out.bodyS = out.world.createRigidBody(out.rigidS);
+                            out.colliderDesc= RAPIER.ColliderDesc.cuboid(xwidth / 2 - 0.01,height / 2-0.01,zwidth / 2-0.01).setDensity(40)
+                            out.colliderDescS= RAPIER.ColliderDesc.cuboid(xwidth / 2,height / 2,zwidth / 2).setDensity(40).setSensor(true)
+                            out.colliderDesc.userData = { id: "unmovable_object" }; 
+                            out.playerIsExistent= true
+                            out.restart= 1
+                            out.grounded= false
+                            out.debugmesh = new THREE.Mesh(new THREE.BoxGeometry(xwidth, height, zwidth), new THREE.MeshBasicMaterial({color: 0x00ff00,  transparent: true, opacity: 0.5}));
+                            out.gun = 'pistol'
+                            out.holding = {ch:false, coll: undefined, body: undefined}
+                            out.collider = world.createCollider(out.colliderDesc, out.body);
+                            out.colliderS = world.createCollider(out.colliderDescS, out.bodyS);
+                            out.collider.userData = {id:'player'}
+                            out.colliderS.userData = {id:'player'}
+                            if (pointerLocks.length < 1 && !debug.cam) {
+                                addPointerLock(camera, uiCanvas);
+                            }
+                            scene.add(out.debugmesh);                            
+                            }
+                         out.prevPos;       
+                        out.checkCollision = function() {
+                            world.intersectionsWith(out.colliderS, (otherCollider) => {
+                                if (otherCollider.userData.id == 'enemy_bullet'){
+                                    out.dead = true
+                                }
+                                return;
+                            });
+                         }
+                        out.runPlayerDebug = function (dt, rayOrigin) {
+                            out.debugmesh.position.set(out.body.translation().x, out.body.translation().y, out.body.translation().z);
+                            for (var i = 0; i < lines.length; i++) {
+                                scene.remove(lines[i]);
+                            }
+                            drawDebugLine(scene, [new THREE.Vector3(rayOrigin.x, rayOrigin.y   - 1.001, rayOrigin.z),   new THREE.Vector3(rayOrigin.x, rayOrigin.y - 2.001, rayOrigin.z)    ]);
+                            drawDebugLine(scene, [new THREE.Vector3(rayOrigin.x - 0.5, rayOrigin.y - 1.001, rayOrigin.z - 0.5), new THREE.Vector3(rayOrigin.x - 0.5, rayOrigin.y - 2.001, rayOrigin.z - 0.5)]);
+                            drawDebugLine(scene, [new THREE.Vector3(rayOrigin.x + 0.5, rayOrigin.y - 1.001, rayOrigin.z - 0.5), new THREE.Vector3(rayOrigin.x + 0.5, rayOrigin.y - 2.001, rayOrigin.z - 0.5)]);
+                            drawDebugLine(scene, [new THREE.Vector3(rayOrigin.x - 0.5, rayOrigin.y - 1.001, rayOrigin.z + 0.5), new THREE.Vector3(rayOrigin.x - 0.5, rayOrigin.y - 2.001, rayOrigin.z + 0.5)]);
+                            drawDebugLine(scene, [new THREE.Vector3(rayOrigin.x + 0.5, rayOrigin.y - 1.001, rayOrigin.z + 0.5), new THREE.Vector3(rayOrigin.x + 0.5, rayOrigin.y - 2.001, rayOrigin.z + 0.5)]);
+
+                            ui_ctx.fillStyle = 'white';
+                            ui_ctx.fillText('FPS: '+(1/(dt*0.1)).toFixed(2),10,15)
+                            ui_ctx.fillText('X Pos: '+out.x.toFixed(2),10,30)
+                            ui_ctx.fillText('Y Pos: '+out.y.toFixed(2),10,45)
+                            ui_ctx.fillText('Z Pos: '+out.z.toFixed(2),10,60)
+                            ui_ctx.fillText('X Vel: '+out.body.linvel().x,10,75)
+                            ui_ctx.fillText('Y Vel: '+out.body.linvel().y,10,90)
+                            ui_ctx.fillText('Z Vel: '+out.body.linvel().z,10,105)
+                            ui_ctx.fillText('Yaw: '+(-out.yaw*10000%(Math.PI*20000)/10000).toFixed(2),10,120)
+                            ui_ctx.fillText('Pitch: '+out.pitch.toFixed(2),10,135)
+                            ui_ctx.fillText('Grounded: '+out.grounded,10,150)
+                            }
+                        out.shoot = function() {
+                            if (out.gun === 'pistol') {                                        
+                                if (cooldown.check(guns.pistol.cooldown.id)) {
+                                    guns.pistol.shoot(out.camera,guns.pistol.cooldown.id);
+                                }
+                            } else {
+
+                                const cameraPosition = out.camera.position;
+                                const direction = new THREE.Vector3();
+                                out.camera.getWorldDirection(direction);
+                                                        
+                                const spawnPosition = cameraPosition.clone().add(direction.clone().multiplyScalar(2));
+                                if (!out.holding.ch) { 
+
+                                    let rayDirection = direction.clone().multiplyScalar(5);
+                                    let blockRay = new RAPIER.Ray(spawnPosition, rayDirection);                                    
+                                    let hit = world.castRay(blockRay, 10, true);
+                                    
+                                    if (hit && hit.collider && hit.toi < 2) {                                    
+                                        let body = hit.collider.parent();
+                                        if (hit.collider.userData && hit.collider.userData.id) {                                          
+                                            if (hit.collider.userData.id === "movable_object") {                                   
+                                                body.setTranslation(spawnPosition);
+                                                out.holding.ch = true;
+                                                out.holding.coll = hit.collider
+                                                out.holding.body = body
+                                            }
+                                        }
+                                    }  
+                                } else if (out.holding.body) { 
+                                    const rect = document.createElement("div");
+                                    rect.style.position = "fixed";
+                                    rect.style.top = "50px";
+                                    rect.style.left = "50px";
+                                    rect.style.width = "25px";
+                                    rect.style.height = "25px";
+                                    rect.style.background = "rgba(0, 255, 0, 0.5)"; // Semi-transparent black
+                                    rect.style.zIndex = "9999"; // Ensure it's on top
+                                    rect.style.pointerEvents = "none"; // Allows clicking elements underneath
+                                    rect.style.borderRadius = "5px"; // Rounded edges
+                                    rect.id = "overlay";
+                                    
+                                    // Add it to the page
+                                    document.body.appendChild(rect);
+
+                                    out.holding.body.setTranslation(spawnPosition);
+                                    out.holding.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+                                    out.holding.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+                                }                                   
+
+
+                                
+                            }
+                            }
+                            let gun 
+                        out.runPlayerPhysics = function (dt){
+                            out.checkCollision()
+                            if (out.gun == 'pistol' && gun == undefined) {
+                                gun = guns.pistol.draw(out.camera.position,out.camera.quaternion,false)
+                            } else if (out.gun == 'pistol'){
+                                gun.update(out.camera.position,out.camera.quaternion,false)
+                            } else if (gun !== undefined) {
+                                scene.remove(gun.gun)
+                                gun = undefined
+                            }
+                            if (out.playerIsExistent) {
+                                if (debug.cam){
+                                    orbits[debugCam.orbitNum].target.set(out.body.translation().x,out.body.translation().y,out.body.translation().z)
+                                    orbits[debugCam.orbitNum].update()
+                                }
+                                out.cosPitch = Math.cos(-out.pitch);
+                                out.sinPitch = Math.sin(-out.pitch);
+                                out.cosYaw = Math.cos(-out.yaw);
+                                out.sinYaw = Math.sin(-out.yaw);
+
+                                let sdir = out.sinYaw,
+                                    cdir = -out.cosYaw,
+                                    speed = (-out.walkSpeed * (out.crouching ? (out.grounded ? 0.75 : 0.5) : 1) * (out.grounded ? 1 : 0.85) );
+
+                                let impulse = { x: 0, y: 0, z: 0 }; // Initialize impulse vector
+
+                                let e = 10
+                                if (user.keysHeld.ShiftLeft){
+                                    out.crouching = true;
+                                } else {
+                                    out.crouching = false;
+                                }
+
+                                let moving = false
+                                let movingX = (user.keysHeld.KeyD || user.keysHeld.KeyA);
+                                if (user.keysHeld.KeyD && user.keysHeld.KeyA) movingX = false
+                                let movingZ = (user.keysHeld.KeyW || user.keysHeld.KeyS);
+                                if (user.keysHeld.KeyW && user.keysHeld.KeyS) movingZ = false
+
+                                if (movingX) {
+                                    if (!movingZ){
+                                        if (user.keysHeld.KeyD) {
+                                            impulse.x += cdir * speed;
+                                            impulse.z -= sdir * speed;
+                                        } 
+                                        if (user.keysHeld.KeyA) {
+                                            impulse.x -= cdir * speed;
+                                            impulse.z += sdir * speed;
+                                        }
+                                    } else {
+                                        if (user.keysHeld.KeyD) {
+                                            impulse.x += cdir * speed * 2;
+                                            impulse.z -= sdir * speed * 2;
+                                        } 
+                                        if (user.keysHeld.KeyA) {
+                                            impulse.x -= cdir * speed * 2;
+                                            impulse.z += sdir * speed * 2;
+                                        }
+                                    }
+                                }
+
+                                if (movingZ) {
+                                    if (user.keysHeld.KeyW) {
+                                        impulse.x -= sdir * speed;
+                                        impulse.z -= cdir * speed;
+                                    }
+                                    if (user.keysHeld.KeyS) {
+                                        impulse.x += sdir * speed;
+                                        impulse.z += cdir * speed;
+                                    }
+                                }
+
+                                if (user.keysPressed.KeyJ){
+                                    switch (debug.lines){
+                                        case true:debug.lines = false
+                                        break;
+                                        case false:debug.lines = true
+                                    }
+                                }
+                                if (user.keysPressed.KeyH){
+                                    switch (debug.hitboxes){
+                                        case true:debug.hitboxes = false
+                                        break;
+                                        case false:debug.hitboxes = true
+                                    }                                
+                                }
+                                if (user.keysPressed.KeyK){
+                                    switch (debug.cam){
+                                        case true:
+                                            debug.cam = false
+                                        break;
+                                        case false:
+                                            debug.cam = true
+                                            addOrbit(debugCam, document.body)
+                                            debugCam.position.copy(fpscamera.position)
+                                    }                                
+                                }
+                                
+
+                                let velocity = out.body.linvel();
+                                let groundFrictionImpulse = {
+                                    x: -velocity.x * 1.5, // Adjust multiplier to control slowdown rate
+                                    y: 0,
+                                    z: -velocity.z * 1.5
+                                };
+                                let airFrictionImpulse = {
+                                    x: -velocity.x * 0.75, // Adjust multiplier to control slowdown rate
+                                    y: 0,
+                                    z: -velocity.z * 0.75
+                                };
+
+                                if ( out.grounded && !movingX && !movingZ) {
+                                    out.body.applyImpulse(groundFrictionImpulse, true);
+                                } else if ( !out.ground  && !movingX && !movingZ) {
+                                    out.body.applyImpulse(airFrictionImpulse, true);
+                                }
+
+                                // Apply impulse to the player body
+                                if (impulse.x !== 0 || impulse.z !== 0) {
+                                    if (out.body.linvel().x < e && out.body.linvel().x > -e && out.body.linvel().z < e && out.body.linvel().z > -e){
+                                        out.body.applyImpulse(impulse, true);
+                                    }
+                                }
+
+                                if (out.grounded) {
+                                    if (impulse.y < 0) impulse.y = 0;
+                                    if (user.keysHeld.Space) {
+                                        impulse.y = out.jumpPower * (out.crouching ? 1.15 : 1);
+                                        out.grounded = false;
+                                        out.body.applyImpulse({ x: 0, y: out.jumpPower * 1.1, z: 0 }, true);
+                                    }
+                                    if(out.crouching){
+                                        
+                                        let fx=impulse.x*out.crouch_friction,
+                                            fz=impulse.z*out.crouch_friction
+                                        
+                                        impulse.x-=fx*dt
+                                        impulse.z-=fz*dt
+                                        
+                                    } else {
+                                        
+                                        let fx=impulse.x*out.fric,
+                                            fz=impulse.z*out.fric
+                                        
+                                        impulse.x-=fx*dt
+                                        impulse.z-=fz*dt
+                                    }
+
+                                    } else {
+                                    impulse.y-=(out.gravity*dt*40)/2;
+                                    
+                                    if(!out.crouching){
+                                        
+                                        let fx=impulse.x*out.airFric,
+                                            fz=impulse.z*out.airFric
+                                        
+                                        impulse.x-=fx*dt
+                                        impulse.z-=fz*dt
+                                        
+                                    } else {
+                                        
+                                        let fx=impulse.x*out.airFric*1.2,
+                                            fz=impulse.z*out.airFric*1.2
+                                        
+                                        impulse.x-=fx*dt
+                                        impulse.z-=fz*dt
+                                    }
+                                    }
+                                
+                                
+                            
+                                
+                                
+                                let moved = false;
+                               
+                                
+                                let rayOrigin = out.body.translation();
+                                out.rays = [];
+                                out.rays[0] = (new RAPIER.Ray(new THREE.Vector3(rayOrigin.x - 0, rayOrigin.y   - 1.001, rayOrigin.z - 0),   { x: 0, y: -1, z: 0 }));
+                                out.rays[1] = (new RAPIER.Ray(new THREE.Vector3(rayOrigin.x - 0.5, rayOrigin.y - 1.001, rayOrigin.z - 0.5), { x: 0, y: -1, z: 0 }));
+                                out.rays[2] = (new RAPIER.Ray(new THREE.Vector3(rayOrigin.x + 0.5, rayOrigin.y - 1.001, rayOrigin.z - 0.5), { x: 0, y: -1, z: 0 }));
+                                out.rays[3] = (new RAPIER.Ray(new THREE.Vector3(rayOrigin.x - 0.5, rayOrigin.y - 1.001, rayOrigin.z + 0.5), { x: 0, y: -1, z: 0 }));
+                                out.rays[4] = (new RAPIER.Ray(new THREE.Vector3(rayOrigin.x + 0.5, rayOrigin.y - 1.001, rayOrigin.z + 0.5), { x: 0, y: -1, z: 0 }));
+
+                                out.hits = [];
+                                out.hits[0] = world.castRay(out.rays[0], 1.1, true);
+                                out.hits[1] = world.castRay(out.rays[1], 1.1, true);
+                                out.hits[2] = world.castRay(out.rays[2], 1.1, true);
+                                out.hits[3] = world.castRay(out.rays[3], 1.1, true);
+                                out.hits[4] = world.castRay(out.rays[4], 1.1, true);
+
+                                let trueHits = 0;
+                                if (out.hits[0] && out.hits[0].collider && out.hits[0].toi < 0.1) { //out.hits[0].toi > 0.001 && out.hits[0].toi < 0.1) {
+                                    trueHits++;
+                                }  
+                                if (out.hits[1] && out.hits[1].collider && out.hits[1].toi < 0.1) { //out.hits[1].toi > 0.001 && out.hits[1].toi < 0.1) {
+                                    trueHits++;
+                                }  
+                                if (out.hits[2] && out.hits[2].collider && out.hits[2].toi < 0.1) { //out.hits[2].toi > 0.001 && out.hits[2].toi < 0.1) {
+                                    trueHits++;
+                                } 
+                                if (out.hits[3] && out.hits[3].collider && out.hits[3].toi < 0.1) { //out.hits[3].toi > 0.001 && out.hits[3].toi < 0.1) {
+                                    trueHits++;
+                                } 
+                                if (out.hits[4] && out.hits[4].collider && out.hits[4].toi < 0.1) { //out.hits[4].toi > 0.001 && out.hits[4].toi < 0.1) {
+                                    trueHits++;
+                                }
+                                if (trueHits > 2) {
+                                    out.grounded = true;
+                                } else {
+                                    out.grounded = false;
+                                }
+
+                                document.getElementById("overlay")?.remove();
+                                if (user.mousePressed) {
+                                    out.shoot();
+                                }
+                    
+
+                                if (out.body.translation().y < -10) {
+                                    out.dead = true;
+                                }
+                                                    
+                                if (out.dead === true) {
+                                    out.body.setLinvel({x:0,y:0,z:0})
+                                    out.body.setTranslation({x: out.sz, y: out.sy, z: out.sz});
+                                    out.dead = false;
+                                    level.update = true;
+                                }
+                                if(user.keysHeld.KeyR && out.dead === false){
+                                    out.dead = true;
+                                }
+                    
+                                let quaternion = new THREE.Quaternion();
+                                quaternion.setFromEuler(new THREE.Euler(0, 0, 0, 'XYZ'));
+                    
+                                if (debug.cam) {
+                                out.camera.quaternion.copy(debugCam.quaternion)
+                                }
+
+                                let cam = out.camera
+                                if (!out.crouching) {cam.position.set(out.body.translation().x, out.body.translation().y+(out.height/2), out.body.translation().z);}
+                                else {cam.position.set(out.body.translation().x, out.body.translation().y-(out.height/2), out.body.translation().z);}
+                                let q = cam.quaternion;
+                                
+                                let euler = new THREE.Euler();
+                                euler.setFromQuaternion(q, 'YXZ');
+                                out.yaw = euler.y;  
+                                out.pitch = euler.x;    
+                                
+                                if (debug.cam === true) {
+                                    out.runPlayerDebug(dt, rayOrigin);
+                                    out.debugmesh.material.opacity = 0.5
+                                } else {
+                                    out.debugmesh.material.opacity = 0
+                                }
+                                if (!user.mousePressed) {out.holding.ch = false;}    
+                                
+                                out.bodyS.setTranslation(out.body.translation())
+
+                            }
+                            }
+                            
+                        return out
+                    })({})
+                        
+                /*user*/
+                    function vel(dt) {
+                        if (player.playerIsExistent) {
+                            let quaternion = new THREE.Quaternion();
+                            quaternion.setFromEuler(new THREE.Euler(0, 0, 0, 'XYZ'));
+                            player.body.setRotation(quaternion);
+                            
+                            for (let i = 0; i < objectsToRemove.length; i++) {
+                                let body = objectsToRemove[i];
+                                if (body && world.getRigidBody(body.handle)) { // Ensure body exists
+                                    world.removeRigidBody(body);
+                                }
+                            }
+                            objectsToRemove = [];
+                        }
+                    }
+
+                    const user=(function(controls){
+                        
+                        controls.mouseX=controls.mouseY=0
+                        controls.mousePressed=controls.mouseClicked=false
+                        controls.keysHeld={}
+                        controls.keysPressed={}
+                        controls.shift=false
+
+                        uiCanvas.onmousemove=function(e){
+                            controls.mouseX+=e.movementX
+                            controls.mouseY+=e.movementY
+                        }
+                        
+                        uiCanvas.onmousedown=function(){
+                            if (!controls.mousePressed) { 
+                                controls.mouseClicked = true; // ✅ Trigger only on the first press
+                            }
+                            controls.mousePressed=true
+                        }
+                        
+                        uiCanvas.onmouseup=function(){
+                            controls.mousePressed=false
+                        }
+                        
+                        document.onkeydown=function(e){
+                            if (   controls.keysHeld[e.code.toString()] !== true   ) {
+
+                                controls.keysPressed[e.code.toString()]=true
+
+                            } else {
+
+                                controls.keysPressed[e.code.toString()]=false
+
+                            }
+
+                            controls.keysHeld[e.code.toString()]=true
+                        }
+                        
+                        document.onkeyup=function(e){
+                            controls.keysHeld[e.code.toString()]=false
+                        }
+
+                        /*document.addEventListener("keydown", (e) => {
+                            controls.keysPressed[e.code.toString()] = true;
+                        });
+
+                        document.addEventListener("keyup", (e) => {
+                            controls.keysPressed[e.code.toString()] = false;
+                        });*/
+
+                        controls.update = function() {
+                            controls.keysPressed={}
+                            controls.mouseClicked=false
+                        }
+                                                
+                        return controls
+                        
+                    })({})
+
+
+            /*Guns*/
+                    let guns = {
+                        pistol: {}
+
+                    };
+                    guns.pistol = (function(out){
+                        out.cooldown = cooldown.create(1,10);
+                        
+                        out.draw = function(pos, quat,enemy=true) {
+                            let gun = new THREE.Group();
+
+                            const barrelGeometry = new THREE.BoxGeometry(0.1, 0.15, 0.5);
+                            const handleGeometry = new THREE.BoxGeometry(0.1, 0.4, 0.1);
+                            const material = new THREE.MeshStandardMaterial({ color: 0x000000 });
+
+                            let barrel = new THREE.Mesh(barrelGeometry,material)
+                            let handle = new THREE.Mesh(handleGeometry,material)
+
+                            let offsets
+                            if (enemy) {
+                                offsets = {
+                                    b:new THREE.Vector3(0,-0.02,0.45),
+                                    h:new THREE.Vector3(0,-0.145,0.175),
+                                    g:new THREE.Vector3(0,0,0)
+                                }
+                            } else {
+                                offsets = {
+                                    b:new THREE.Vector3(0.6,-0.7,-1.3),
+                                    h:new THREE.Vector3(0.6,-0.85,-1.1),
+                                    g:new THREE.Vector3(0,0,0)
+                                }
+
+                            }
+                                
+
+                            gun.add(barrel)
+                            gun.add(handle)
+
+                            gun.position.copy(pos)
+                            gun.quaternion.copy(quat)
+
+                            scene.add(gun)
+                            function update(pos,quat){
+                                offsets.g.applyQuaternion(quat)
+                                barrel.position.copy(offsets.b)
+                                handle.position.copy(offsets.h)
+                                gun.position.copy(pos).add(offsets.g)
+                                gun.quaternion.copy(quat)
+                                offsets.g = new THREE.Vector3(0,0.5,0.5)
+                            }
+                            return {update, gun}
+
+                         }
+
+                        out.shoot = function(camera,cooldownid,enemy=false) {
+                            cooldown.activate(cooldownid);
+                            const radius = 0.2;
+                            const halfHeight = 0.01;
+                            const density = 10;
+                            const speed = 50;
+
+                            // Get camera position and forward direction
+                            //console.log(camera)
+                            const cameraPosition = camera.position;
+                            const direction = new THREE.Vector3();
+                            camera.getWorldDirection(direction);
+                            
+                            // Set initial spawn position slightly in front of the camera
+                            const spawnOffset = 1.5;
+                            const spawnPosition = cameraPosition.clone().add(direction.clone().multiplyScalar(spawnOffset));
+
+                            // Create physics body
+                            let rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(spawnPosition.x, spawnPosition.y, spawnPosition.z).setGravityScale(0);
+                            let rigid = world.createRigidBody(rigidBodyDesc);
+                            let colliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, radius).setDensity(density).setSensor(true);
+                            let collider = world.createCollider(colliderDesc, rigid);
+                            if (enemy){
+                                collider.userData = { id: 'enemy_bullet' }
+                            }else{
+                                collider.userData = { id: 'bullet' }
+                            }
+
+
+                            // Apply initial velocity in camera direction
+                            const initialVelocity = direction.clone().multiplyScalar(speed);
+                            rigid.setLinvel(initialVelocity);
+
+                            // Create Three.js mesh
+                            const geometry = new THREE.CapsuleGeometry(radius, halfHeight * 2, 16, 32);
+                            const material = new THREE.MeshStandardMaterial({
+                                color: 0x00ff00,
+                                flatShading: true
+                            });
+                            const mesh = new THREE.Mesh(geometry, material);
+                            mesh.position.copy(spawnPosition);
+                            scene.add(mesh);
+
+                            let num = projectiles.length;
+
+                            function update() {
+                                if (mesh.parent !== undefined) {
+                                    let { x, y, z } = rigid.translation();
+                                    let rot = rigid.rotation();
+
+                                    let quaternion = new THREE.Quaternion();
+                                    quaternion.setFromEuler(new THREE.Euler(0, 0, 0, 'XYZ'));
+                                
+                                    rigid.setRotation(quaternion);
+
+                                    ///rigid.setLinvel(initialVelocity);
+                                    mesh.position.set(x, y, z);
+                                    mesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+                                    checkCollision();
+                                }
+                            }
+
+                            function destroy() {                                
+                                explosion(rigid.translation(), 100, 1);
+                                scene.remove(mesh);
+                                projectiles[num] = undefined;                                        
+                                if (!objectsToRemove.includes(rigid)) {
+                                    objectsToRemove.push(rigid);
+                                }
+                                rigid = null;               
+                            }
+
+                            // Collision check
+                            function checkCollision() {
+                                if (!rigid || !mesh || !mesh.parent) return;
+
+                                world.intersectionsWith(collider, (otherCollider) => {
+                                    if (otherCollider == player.colliderDesc) {return;}
+                                    if (enemy && otherCollider.userData.id == 'enemy') {return;}
+                                    //console.log(otherCollider.userData.id)
+                                    destroy(); 
+                                    return;
+                                });
+                            }
+
+                            let projectile = { mesh, rigid, update, checkCollision, destroy };
+                            projectiles.push(projectile);
+                                    
+                         }
+                        return out;
+                    })({}) 
+
+            /*Levels*/
+
+                level.curLevel = 1;
+                let restart;
+                function clearWorld(world) {
+
+
+                    world.forEachRigidBody(body => {
+                        world.removeCollider(body.collider());
+                        world.removeRigidBody(body);
+                    });
+
+                    if (player.playerIsExistent) {
+                        if (player.body.isValid()) {
+                            world.removeCollider(player.collider)
+                            world.removeRigidBody(player.body)
+                        }
+                        player.playerIsExistent = false              
+                        //pointerLocks = [], orbits = []
+
+                    }
+                    plats.forEach(plat => {
+                        if (plat.collider) {
+                            world.removeCollider(plat.collider); // Remove physics collider
+                        }
+                        if (plat.rigid.isValid()) {
+                            world.removeRigidBody(plat.rigid); // Remove physics body
+                        }
+                        if (plat.mesh) {
+                            scene.remove(plat.mesh); // Remove mesh from scene
+                        }
+                    });
+
+                    cubes.forEach(cube => {
+                        if (cube != undefined) {
+                            if (cube.colliderDesc) {
+                                world.removeCollider(cube.colliderDesc); // Remove physics collider
+                            }
+                            if (cube.rigid.isValid()) {
+                                world.removeRigidBody(cube.rigid); // Remove physics body
+                            }
+                            if (cube.mesh) {
+                                scene.remove(cube.mesh); // Remove mesh from scene
+                            }
+                        }
+                    });
+
+                    spheres.forEach(sphere => {                        
+                        if (sphere != undefined) {
+                            if (sphere.colliderDesc) {
+                                world.removeCollider(sphere.colliderDesc); // Remove physics collider
+                            }
+                            if (sphere.rigid.isValid()) {
+                                world.removeRigidBody(sphere.rigid); // Remove physics body
+                            }
+                            if (sphere.mesh) {
+                                scene.remove(sphere.mesh); // Remove mesh from scene
+                            }
+                        }
+                    });
+                    enemies.forEach(enemy => {                        
+                        if (enemy != undefined) {
+                            if (enemy.colliderP) {
+                                world.removeCollider(enemy.colliderP); 
+                            }
+                            if (enemy.rigidP.isValid()) {
+                                world.removeRigidBody(enemy.rigidP); 
+                            }
+                            if (enemy.colliderS) {
+                                world.removeCollider(enemy.colliderS); 
+                            }
+                            if (enemy.rigidS) {
+                                world.removeRigidBody(enemy.rigidS); 
+                            }
+                            if (enemy.mesh) {
+                                while (enemy.mesh.enemy.children.length > 0) {
+                                    let child = enemy.mesh.enemy.children[0];
+                                    scene.remove(child);
+                                    enemy.mesh.enemy.remove(child);
+                                }
+                            }
+                            if (enemy.gun){
+                                scene.remove(enemy.gun.gun)
+                                enemy.gun = undefined
+                            }
+                        }
+                    });
+                    ragEnemies.forEach(enemy =>{
+                        if (enemy.meshes) {
+                            enemy.meshes.forEach(mesh => {
+                                console.log(mesh)
+                                scene.remove(mesh)
+                            })
+                        }
+                        if (enemy.enemy){
+                            scene.remove(enemy.enemy)
+                        }
+                    })
+
+                    plats = []; // Clear the array
+                    cubes = []; // Clear the array
+                    spheres = []; // Clear the array
+                    enemies = []; // Clear the array
+                    ragEnemies = []; // Clear the array
+                    enemyMeshes = []; // Clear the arrayenemyMeshes = [],ragEnemies = []
+                    projectiles = [];
+                    
+
+                    rigidBodies = []; // Clear the array
+
+                    // Remove corresponding meshes from the scene
+                    scene.children = scene.children.filter(child => !(child.isMesh));
+
+                    console.log(world)
+                 }
+                function clearText() {
+                    texts.length = 0; // Empty the texts array
+                    redrawUI(); // Refresh the canvas without text
+                 }
+                let currentScene = 'menu';
+                let scenes = {};
+
+                // Menu Scene
+                scenes.menu = (function(out){
+                    out.setBackground = function () {
+                        clearWorld(world);
+                        if (!debug.cam) {
+                            fpscamera.position.set(1.5,2.5,1.5);
+                            fpscamera.lookAt(0, 2, 0);
+                            fpscamera.fov = 78;
+                        } else {
+                            debugCam.position.set(1.5,2.5,1.5);
+                            debugCam.lookAt(0, 2, 0);
+                        }
+                        addSkybox(90);
+
+                        addPlatform({x: 0, y:0, z: 0},{x:0, y:0, z:0}, {x:50,y:1,z:50},"GRAY");
+                        addPlatform({x: -5, y:0, z:0},{x:0, y:0, z:90}, {x:50,y:1,z:50},"GRAY");
+                        addPlatform({x: 0, y:0, z:-5},{x:90, y:0, z:0}, {x:50,y:1,z:50},"GRAY");
+                    }
+
+                    out.update = function() {
+                        clearText()
+                        out.setBackground();
+                        drawText('Gunnarson 3D', 'center', windowHeight  * 2/18, '125px', 'red', 'Afacad', 'normal', true);
+                        drawButton('Play', 'center', windowHeight  * 8/18, '100px', 'red', 'Afacad', 'normal', true, function(){currentScene = 'play'});
+                        drawButton('Options', 'center', windowHeight  * 12/18, '100px', 'red', 'Afacad', 'normal', true, function(){currentScene = 'options'});
+                    }
+                    
+                    return out
+                 })({})                
+                scenes.levelSelect = (function(out){
+                    out.update = function() {
+                        scenes.menu.setBackground();
+                        drawText('Levels', 'center', windowHeight  * 1/9, '100px', 'red', 'Afacad', 'normal', true, '1', document.body);
+                        drawButton('Chapter 1', 'center', windowHeight  * 3/9, '75px', 'red', 'Afacad', 'normal', true, '2', document.body, function(){currentScene = 'play'});
+                        drawButton('Options', 'center', windowHeight  * 5/9, '75px', 'red', 'Afacad', 'normal', true, '3', document.body);
+                    }
+                    
+                    return out
+                 })({})
+                
+
+                let levels = [];
+                function quickLevelSetup(x,y,z,camera=fpscamera,debugCamera=debugCam,ground=false) {
+
+                    clearWorld(world);
+                    clearText();
+                    player.setPlayer(x,y,z,camera,world);
+                    player.camera.lookAt(new THREE.Vector3(0,0,0))
+                    if (ground){
+                        addGround()
+                    }
+                 }
+                levels[1] = function(debug){
+                    quickLevelSetup(-10,1,0,fpscamera,debugCam,true)
+
+                    level.hasCube = true;
+                    level.hasEnem = false;
+                    level.hasGuns = false;
+                    level.hasMvTl = false;
+                    level.hasExpl = false;
+                    level.id = '1';
+
+                    addSkybox(85);
+                    //addPlatform(  { x: 0, y: -5, z: 0 },   {x:0,y:0,z:0}, { x: 100, y: 1, z: 100 },"GRAY"); 
+                    //addPlatform(  { x: 0, y: 0, z: 0 },   {x:0,y:0,z:0}, { x: 2500, y: 0.01, z: 2500 },"GRAY"); 
+                    addPlatform(  { x: -2.5, y: 2.5, z: 0 },   {x:0,y:0,z:0}, { x: 1, y: 5, z: 5 },"GRAY"); 
+                    addPlatform(  { x: 10, y: 2, z: 0 },   {x:0,y:0,z:0},{ x: 4, y: 1, z: 4 },"GRAY"); 
+                    addPlatform(  { x: 20, y: 5, z: 0 },    {x:0,y:0,z:0},{ x: 6, y: 1, z: 6 }, "GRAY"); 
+                    addPlatform(  { x: 25, y: 8, z: -5 },    {x:0,y:0,z:0},{ x: 5, y: 1, z: 5 }, "GRAY" ); 
+                    addPlatform(  { x: 15, y: 10, z: -10 },   {x:0,y:0,z:0},{ x: 6, y: 1, z: 6 }, "GRAY"); 
+
+                    if (player.playerIsExistent) {
+                        for (var i = 0;i<10;i++){
+                            spawnEnemy({x:-4,y:1,z:-2},'pistol')
+                        }
+                    }
+
+                 }
+                levels[2] = function(debug) {
+                    quickLevelSetup(0,1,0)
+
+
+                    level.hasCube = true;
+                    level.hasEnem = false;
+                    level.hasGuns = false;
+                    level.hasMvTl = false;
+                    level.hasExpl = false;
+                    level.id = 'ballpit'
+                    
+                    addSkybox(85);
+                    addPlatform({x: 0, y:0, z:0},{x:0, y:0, z:0}, {x:16,y:1,z:16},"GRAY");
+                    addPlatform({x: 8, y:0, z: 0},{x:0, y:0, z:0}, {x:1,y:5,z:17},"GRAY");
+                    addPlatform({x:0, y:0, z: 8},{x:0, y:0, z:0}, {x:17,y:5,z:1},"GRAY");
+                    addPlatform({x:-8, y:0, z:0},{x:0, y:0, z:0}, {x:1,y:5,z:17},"GRAY");
+                    addPlatform({x:0, y:0, z:-8},{x:0, y:0, z:0}, {x:17,y:5,z:1},"GRAY");
+
+                    for (var i = 0; i < 1500; i++) {
+                        addPBall(random(-7, 7), random(5, 10), random(-7, 7),0.25);
+                    }
+                    
+
+                 }
+                levels[3] = function(debug) {
+                    quickLevelSetup(0,10,0)
+
+
+                    level.hasCube = true;
+                    level.hasEnem = false;
+                    level.hasGuns = false;
+                    level.hasMvTl = false;
+                    level.hasExpl = false;
+                    level.id = 'test';
+                    
+                    addSkybox(85);
+                    addPlatform({x: 10, y:0, z:-10},{x:0, y:0, z:0}, {x:10,y:1,z:10},"GRAY");
+                    addPlatform({x: 10, y:0, z: 10},{x:0, y:0, z:0}, {x:10,y:1,z:10},"GRAY");
+                    addPlatform({x:-10, y:0, z: 10},{x:0, y:0, z:0}, {x:10,y:1,z:10},"GRAY");
+                    addPlatform({x:-10, y:0, z:-10},{x:0, y:0, z:0}, {x:10,y:1,z:10},"GRAY");
+                    
+                    addPlatform({x:  0, y:0, z:-10},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+                    addPlatform({x:-10, y:0, z:  0},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+                    addPlatform({x:  0, y:0, z: 10},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+                    addPlatform({x: 10, y:0, z:  0},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+
+                    addPlatform({x: 0, y:0, z: 0},  {x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+
+                    addPCube(0,20,0);
+                    addPCube( 10, 20, 10);
+                    addPCube(-10, 20, 10);
+                    addPCube(-10, 20,-10);
+                    addPCube( 10, 20,-10);
+
+                    addPBall( 0, 20,   0);
+                    addPBall( 10, 20, 10);
+                    addPBall( 10, 20,-10);
+                    addPBall(-10, 20,-10);
+                    addPBall(-10, 20, 10);
+
+
+
+                    //C U B E S
+                    for (var i = 0; i < 500; i++) {
+                        //addPCube(random(-15, 15), random(10, 20), random(-15, 15));
+                    } 
+                    for (var i = 0; i < 500; i++) {
+                        //addPBall(random(-15, 15), random(10, 20), random(-15, 15));
+                    }
+                  }
+
+
+                levels[4] = function(debug) {
+                    quickLevelSetup(0,100,0,true)
+
+
+                    level.hasCube = true;
+                    level.hasEnem = false;
+                    level.hasGuns = false;
+                    level.hasMvTl = false;
+                    level.hasExpl = false;
+                    level.id = 'test';
+                    
+                    addSkybox(85);
+                    addPlatform({x: 10, y:0, z:-10},{x:0, y:0, z:0}, {x:10,y:1,z:10},"GRAY");
+                    addPlatform({x: 10, y:0, z: 10},{x:0, y:0, z:0}, {x:10,y:1,z:10},"GRAY");
+                    addPlatform({x:-10, y:0, z: 10},{x:0, y:0, z:0}, {x:10,y:1,z:10},"GRAY");
+                    addPlatform({x:-10, y:0, z:-10},{x:0, y:0, z:0}, {x:10,y:1,z:10},"GRAY");
+                    
+                    addPlatform({x:  0, y:0, z:-10},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+                    addPlatform({x:-10, y:0, z:  0},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+                    addPlatform({x:  0, y:0, z: 10},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+                    addPlatform({x: 10, y:0, z:  0},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+
+                    //addPlatform({x: 0, y:0, z: 0},  {x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+
+                    addPCube(0,20,0);
+                    addPCube( 10, 20, 10);
+                    addPCube(-10, 20, 10);
+                    addPCube(-10, 20,-10);
+                    addPCube( 10, 20,-10);
+
+                    addPBall( 0, 20,   0);
+                    addPBall( 10, 20, 10);
+                    addPBall( 10, 20,-10);
+                    addPBall(-10, 20,-10);
+                    addPBall(-10, 20, 10);
+
+
+                    for (var x = 0; x < 20; x++) {
+                        for (var z = 0; z < 20; z++) {
+                            if (x !== 0 && z !== 0){
+                                addPlatform({x: 20 * x, y:0, z:   20 * z},{x:0, y:0, z:0},{x:10,y:1,z:10}, "GRAY");
+                                addPlatform({x: 20 * -x, y:0, z:  20 * z},{x:0, y:0, z:0},{x:10,y:1,z:10}, "GRAY");
+                                addPlatform({x: 20 * -x, y:0, z:  20 * -z},{x:0, y:0, z:0},{x:10,y:1,z:10}, "GRAY");
+                                addPlatform({x: 20 * x, y:0, z:   20 * -z},{x:0, y:0, z:0},{x:10,y:1,z:10}, "GRAY");
+                            }
+                        }
+                    }
+                    for (var x = -19; x < 20; x++) {
+                        x *= 20;
+                        addPlatform({x: x, y:0, z:0},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+                        x = x / 20;
+                    }
+                    for (var z = -19; z < 20; z++) {
+                        z *= 20;
+                        addPlatform({x: 0, y:0, z:z},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+                        z = z / 20;
+                    }
+                    for (var x = 0; x < 19; x++) {
+                        for (var z = 0; z < 9; z++) {
+                            let y=30
+                            addPlatform({x: 20 *  x + y, y:0, z:  20 *  z + y},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+                            addPlatform({x: 20 * -x - y, y:0, z:  20 *  z + y},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+                            addPlatform({x: 20 *  x + y, y:0, z:  20 * -z - y},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+                            addPlatform({x: 20 * -x - y, y:0, z:  20 * -z - y},{x:0, y:45, z:0},{x:2 ,y:1,z:2}, "GRAY");
+                        }
+                    }
+
+                    //C U B E S
+                    for (var i = 0; i < 5000; i++) {
+                        addPCube(random(-600, 600), random(10, 20), random(-600, 600));
+                    } 
+                    for (var i = 0; i < 500; i++) {
+                        addPBall(random(-600, 600), random(10, 20), random(-600, 600));
+                    }
+                 }
+
+
+                scenes.levelSetup = function(debug) {
+                    if (level.startup === true || level.update === true || !player.playerIsExistent) {
+                        levels[level.curLevel](debug);
+                        level.startup = false;
+                        level.update = false;
+                    }
+                    if (level.hasCube === true) {
+                        updatePhysicsObjects();
+                    }
+                    if (user.keysPressed.KeyQ){
+                        level.update = true;
+                        if (level.curLevel < levels.length - 1){
+                            level.curLevel++
+                        } else {
+                            level.curLevel = 1;
+                        }
+                    }
+                 }
+                scenes.menu.count = 0;
+
+            /*Update*/
+                                
+                window.addEventListener( 'resize', onWindowResize );
+                
+ 
+
+                function UPDATE(debug) {
+            
+                    for (var i = 0; i < lines.length; i++) {
+                        scene.remove(lines[i]);
+                    }
+                    if (currentScene === 'menu') {
+                        if (scenes.menu.count === 0) {
+                            scenes.menu.update();
+                            scenes.menu.count ++;
+                    }
+                    document.getElementById("ui-canvas").style.zIndex = "2";
+                    } else if (currentScene === 'play') {
+                        scenes.levelSetup(debug);
+                        crosshair.update();
+                        document.getElementById("ui-canvas").style.zIndex = "-1";
+                    } else if (currentScene === 'pause') {
+                        scenes.pause.update();
+                        document.getElementById("ui-canvas").style.zIndex = "2";
+                    } else if (currentScene === 'options') {
+                        scenes.options.update();
+                        document.getElementById("ui-canvas").style.zIndex = "2";
+                    }
+
+                    let dt = Math.min( 0.05, clock.getDelta() ) * 13;
+
+                    if (player.playerIsExistent === true) {   
+                        player.runPlayerPhysics(dt);                        
+                    }
+
+                    if (!debug.cam && player.playerIsExistent === true) {                    
+                        renderer.render( scene, player.camera );
+                    } else if (debug.cam){
+                        renderer.render( scene, debugCam );
+                    } else {
+                        renderer.render( scene, fpscamera );
+                    }
+                    user.update();
+                    cooldown.update();
+
+                    world.timestep = 1 / fps;
+
+                    if (debug.cam && player.playerIsExistent && orbits.length > 0) {
+                        pointerLocks = []
+                    }
+
+                 }
+
+            /*Nessecities*/
+                let lastFrameTime = performance.now();
+                let fps = 0;
+
+                function updateFPS() {
+                    let now = performance.now();
+                    let delta = now - lastFrameTime;
+                    fps = 1000 / delta;  // FPS = 1000ms / time per frame
+                    lastFrameTime = now;
+                }
+                function onWindowResize() {
+                    clearText()
+                    fpscamera.aspect = window.innerWidth / window.innerHeight;
+                    fpscamera.updateProjectionMatrix();
+                    debugCam.aspect = window.innerWidth / window.innerHeight;
+                    debugCam.updateProjectionMatrix();
+                    uiCanvas.width = window.innerWidth
+                    uiCanvas.height = window.innerHeight
+
+                    windowWidth = window.innerWidth;
+                    windowHeight = window.innerHeight;
+
+                    renderer.setSize( window.innerWidth, window.innerHeight );
+
+                    scenes.menu.count = 0;
+
+                 }
+                let lastTime=0
+                function animationLoop(now) {
+                    //if (now - lastTime >= 1000 / 70) {
+                        lastTime = now;
+                        UPDATE(debug);
+                        stats.update();
+                        world.step();
+                        vel(Math.min( 0.05, clock.getDelta() ) * 35);
+                        updateFPS()
+                    //}
+                 }
+		</script>
+	</body>
+</html>
+           
+
+

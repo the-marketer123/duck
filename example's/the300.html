@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>300 - The Game</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script><!--J Query-->
+        <script src='https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js'></script><!--GL Matrix-->
+
+        <style>
+            canvas {
+                position: absolute;
+                top: 0;
+                left: 0;
+                display: block;
+            }
+
+            #threeCanvas {
+                z-index: 0;
+            }
+
+            #uiCanvas {
+                z-index: 1;
+                pointer-events: auto;
+            }
+
+        </style>
+    </head>
+    
+    <body>
+        <script type="importmap">
+            {
+                "imports": {
+                "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.172.0/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/",
+                "@dimforge/rapier3d-compat": "https://cdn.skypack.dev/@dimforge/rapier3d-compat"
+                }
+            }
+        </script>
+
+
+        <!--<img id="titlebackground" src='assets/title_background.webp'>-->
+        <canvas id="ui-canvas"></canvas>
+
+        <audio autoplay loop muted id="title_song">
+            <source src="assets/sfx/title_song.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
+        <audio autoplay loop muted id="crickets">
+            <source src="assets/sfx/crickets.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
+        <audio autoplay muted id="monologue">
+            <source src="assets/sfx/monologue1.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio> 
+        <audio autoplay muted id="battle">
+            <source src="assets/sfx/battle.mp3" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
+
+        <script type="module">
+            import * as THREE from 'three';
+            import { Water } from 'three/addons/objects/Water.js';
+            import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+            import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+            import { Sky } from 'three/addons/objects/Sky.js';
+            import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+            import  Stats  from 'three/addons/libs/stats.module.js'
+            import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+            import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+            const RAPIER = await import('https://cdn.skypack.dev/@dimforge/rapier3d-compat@0.11.2');
+            await RAPIER.init();
+
+            let uiCanvas=document.getElementById('ui-canvas')
+            let ui_ctx=uiCanvas.getContext('2d')
+            function resizeCanvas() {
+                uiCanvas.width = window.innerWidth;
+                uiCanvas.height = window.innerHeight;
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            function random(a,b){
+                
+                return Math.random()*(b-a)+a
+            }
+            const clock = new THREE.Clock()
+
+
+            /*Start Button*/
+                let showStartButton = true;
+                const startbutton = {
+                    x: uiCanvas.width / 2 - 100,
+                    y: uiCanvas.height / 2 - 30,
+                    width: 200,
+                    height: 60,
+                    text: 'START',
+                    hovered: false
+                };
+
+                // Draw loop
+                function drawStartButton() {
+                    ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+
+                    // Update startbutton position in case of resize
+                    startbutton.x = uiCanvas.width / 2 - 100;
+                    startbutton.y = uiCanvas.height / 2 - 30;
+
+                    // startbutton background
+                    ui_ctx.beginPath();
+                    ui_ctx.roundRect(startbutton.x, startbutton.y, startbutton.width, startbutton.height, 15);
+                    ui_ctx.fillStyle = startbutton.hovered ? '#00f0ff' : '#0077cc';
+                    ui_ctx.fill();
+
+                    // startbutton glow
+                    if (startbutton.hovered) {
+                    ui_ctx.shadowColor = '#00ffff';
+                    ui_ctx.shadowBlur = 20;
+                    } else {
+                    ui_ctx.shadowBlur = 0;
+                    }
+
+                    // startbutton text
+                    ui_ctx.font = 'bold 24px sans-serif';
+                    ui_ctx.fillStyle = '#ffffff';
+                    ui_ctx.textAlign = 'center';
+                    ui_ctx.textBaseline = 'middle';
+                    ui_ctx.fillText(startbutton.text, uiCanvas.width / 2, uiCanvas.height / 2);
+
+                    //requestAnimationFrame(drawStartButton);
+                }
+
+                // Mouse detection
+                uiCanvas.addEventListener("mousemove", (e) => {
+                    if (!showStartButton) return;
+
+                    const rect = uiCanvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+
+                    startbutton.hovered = (
+                        mx >= startbutton.x && mx <= startbutton.x + startbutton.width &&
+                        my >= startbutton.y && my <= startbutton.y + startbutton.height
+                    );
+                });
+
+
+                // Click to start music and remove canvas
+                uiCanvas.addEventListener("click", () => {
+                    if (showStartButton && startbutton.hovered) {
+                        const audio = document.getElementById("title_song");
+                        audio.muted = false;
+                        audio.play();
+
+                        // Set background image
+                        document.body.style.backgroundImage = "url('assets/title_background.png')";
+                        document.body.style.backgroundRepeat = "no-repeat";
+                        document.body.style.backgroundSize = "cover";
+                        document.body.style.backgroundAttachment = "fixed";
+
+                        // Disable the start button (but keep canvas)
+                        showStartButton = false;
+
+                        // Optional: trigger game start or something here
+                    }
+                });
+
+
+                // RoundRect polyfill for older browsers
+                if (!CanvasRenderingContext2D.prototype.roundRect) {
+                    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+                    if (typeof r === 'number') r = { tl: r, tr: r, br: r, bl: r };
+                    this.beginPath();
+                    this.moveTo(x + r.tl, y);
+                    this.lineTo(x + w - r.tr, y);
+                    this.quadraticCurveTo(x + w, y, x + w, y + r.tr);
+                    this.lineTo(x + w, y + h - r.br);
+                    this.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
+                    this.lineTo(x + r.bl, y + h);
+                    this.quadraticCurveTo(x, y + h, x, y + h - r.bl);
+                    this.lineTo(x, y + r.tl);
+                    this.quadraticCurveTo(x, y, x + r.tl, y);
+                    this.closePath();
+                    return this;
+                    };
+                }
+
+                drawStartButton();
+            /*Title*/
+                let titleText = "The 300";
+                let subtitleText = "The Game";
+                let startText = "Begin";
+                let titleAlpha = 0; // Controls fade-in effect
+                let titleFadeSpeed = 0.02; // Adjust this for faster/slower fade-in
+
+                let gameStarted = false;
+
+
+                const beginButton = {
+                    x: 0,
+                    y: 0,
+                    width: 200,
+                    height: 60,
+                    hovered: false,
+                    scale: 1,
+                    targetScale: 1
+                };
+                // Function to draw the title
+                function drawTitle() {
+                    ui_ctx.save();
+
+                    // Title Text
+                    ui_ctx.shadowColor = "rgba(255, 223, 186, 0.8)";
+                    ui_ctx.shadowBlur = 20;
+                    ui_ctx.font = "150px 'Pirata One', serif";
+                    ui_ctx.fillStyle = `rgba(0, 0, 0, ${titleAlpha})`;
+                    ui_ctx.textAlign = "center";
+                    ui_ctx.textBaseline = "middle";
+                    ui_ctx.fillText("The 300", uiCanvas.width / 2, uiCanvas.height / 6);
+                    ui_ctx.font = "50px 'Pirata One', serif";
+                    ui_ctx.fillText("The Game", uiCanvas.width / 2, uiCanvas.height / 6 + 100);
+
+                    // Begin button animation
+                    beginButton.targetScale = beginButton.hovered ? 1.05 : 1;
+                    beginButton.scale += (beginButton.targetScale - beginButton.scale) * 0.1;
+
+                    const btnW = beginButton.width * beginButton.scale;
+                    const btnH = beginButton.height * beginButton.scale + 100;
+                    beginButton.x = uiCanvas.width / 2 - btnW / 2;
+                    beginButton.y = uiCanvas.height / 2;
+
+                    // Draw the button
+                    ui_ctx.shadowBlur = beginButton.hovered ? 20 : 0;
+                    ui_ctx.shadowColor = "#00ffff";
+                    ui_ctx.font = "bold " + (beginButton.scale * 50) + "px 'Pirata One', serif";
+                    ui_ctx.fillStyle = `rgba(0, 0, 0, ${titleAlpha})`;
+                    ui_ctx.textAlign = "center";
+                    ui_ctx.textBaseline = "middle";
+                    ui_ctx.fillText("Begin", uiCanvas.width / 2, beginButton.y + btnH / 2);
+
+                    ui_ctx.restore();
+
+                    // Fade in
+                    if (titleAlpha < 1) {
+                        titleAlpha += titleFadeSpeed;
+                    }
+                    if (gameStarted && index.v.fader.isBlack){
+                        const audio = document.getElementById("title_song");
+                        audio.muted = false;
+                        audio.play();
+                        audio.currentTime = 0; // Reset the audio to the beginning
+
+                        const crickets = document.getElementById("crickets");
+                        crickets.muted = false;
+                        crickets.play();
+                        crickets.volume = 0;
+                        
+                        document.body.style.backgroundImage = 'none';
+                        document.body.style.backgroundColor = "white";
+
+                        index.v.scene = 'play'
+                    }
+                }
+
+                uiCanvas.addEventListener("mousemove", (e) => {
+                    if (gameStarted) return;
+
+                    const rect = uiCanvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+
+                    const btnW = beginButton.width * beginButton.scale;
+                    const btnH = beginButton.height * beginButton.scale + 100;
+                    const bx = uiCanvas.width / 2 - btnW / 2;
+                    const by = uiCanvas.height / 2;
+
+                    beginButton.hovered = (
+                        mx >= bx && mx <= bx + btnW &&
+                        my >= by && my <= by + btnH
+                    );
+                });
+
+                uiCanvas.addEventListener("click", () => {
+                    if (gameStarted || titleAlpha < 1) return;
+
+                    if (beginButton.hovered) {
+                        gameStarted = true;
+                        index.v.fader.start(2,2,true)
+                        
+                    }
+                });
+
+
+
+
+
+                // Load the pirate-style font dynamically
+                const pirateFont = document.createElement("link");
+                pirateFont.href = "https://fonts.googleapis.com/css2?family=Pirata+One&display=swap";
+                pirateFont.rel = "stylesheet";
+                document.head.appendChild(pirateFont);
+            /*play*/
+                let gameBegun = false
+                let setup = (function(out){
+                    out.mountains = function(){
+
+                        let loader = new GLTFLoader();
+
+                        loader.load('assets/mountainrange.glb', gltf => {
+                            const clone1 = gltf.scene.clone();
+                            const clone2 = gltf.scene.clone();
+                            const clone3 = gltf.scene.clone();
+                            const clone4 = gltf.scene.clone();
+                            const clone5 = gltf.scene.clone();
+
+                            let rotVector = new THREE.Vector3(0,0,0)
+                            let scale = 25
+                            let xoff = -1700 * (scale/50)
+                            let yoff = -5.225 * (scale/50)
+                            clone1.rotation.setFromVector3(rotVector)
+                            clone1.scale.set(scale, scale, scale)
+                            clone1.position.y = yoff   
+                            clone1.position.x = 0   
+
+                            clone2.rotation.setFromVector3(rotVector)
+                            clone2.scale.set(scale, scale, scale)
+                            clone2.position.y = yoff   
+                            clone2.position.x = xoff   
+
+                            clone3.rotation.setFromVector3(rotVector)
+                            clone3.scale.set(scale, scale, scale)
+                            clone3.position.y = yoff   
+                            clone3.position.x = xoff 
+
+                            clone4.rotation.setFromVector3(rotVector)
+                            clone4.scale.set(scale, scale, scale)
+                            clone4.position.y = yoff 
+                            clone4.position.x = xoff*2 
+
+                            clone5.rotation.setFromVector3(rotVector)
+                            clone5.scale.set(scale, scale, scale)
+                            clone5.position.y = yoff
+                            clone5.position.x = xoff*2
+
+                            index.t.scene.add(clone1)
+                            index.t.scene.add(clone2)
+                            index.t.scene.add(clone3)
+                            index.t.scene.add(clone4)
+                            index.t.scene.add(clone5)
+                        });
+                        /*let rigidBodyDesc = RAPIER.RigidBodyDesc.fixed()
+                            .setTranslation(0, -0.5, 0);
+                        let rigid = index.r.world.createRigidBody(rigidBodyDesc);
+                        
+                        let colliderDesc = RAPIER.ColliderDesc.cuboid(1000, 1, 1000);
+                        index.r.world.createCollider(colliderDesc, rigid);*/
+                       
+                     }
+                    out.sea = function(){
+                        const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
+
+                        const waterNormals = new THREE.TextureLoader().load('assets/waternormals.jpg', (texture) => {
+                        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+                        });
+                        waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping;
+                        waterNormals.repeat.set(10, 10);
+
+                        out.water = new Water(waterGeometry, {
+                        textureWidth: 2048,
+                        textureHeight: 2048,
+                        waterNormals: waterNormals,
+                        sunDirection: new THREE.Vector3(),
+                        sunColor: 0xffffff,
+                        waterColor: 0x001e0f,
+                        distortionScale: 4,
+                        fog: false,
+                        format: THREE.RGBAFormat,
+                        distortionScale: 8000,
+                        waterColor: 0x00080f, // deep blue-black
+                        sunColor: 0x666666,   // overcast lighting                        
+                        });
+                    
+                            out.water.rotation.x = -Math.PI / 2;      
+                            out.water.position.y = -200                  
+                            index.t.scene.add(out.water);
+                     }
+                    out.camp_meshes = new THREE.Group()
+                    out.camp = function(){
+                        const loader = new FBXLoader();
+
+                        loader.load('assets/tents/viking_tent_001/mesh/highpoly_viking_tent_001.fbx', fbx => {
+                            function campcircle(centerX,centerY,centerZ){
+                                loader.load('assets/firepit.FBX', fbx => {
+                                    let firepit = fbx.clone();
+                                    firepit.position.set(centerX,centerY-0.5,centerZ)
+                                    firepit.scale.set(1/35,1/35,1/35)
+                                    out.camp_meshes.add(firepit)
+                                });
+
+                                const fireColor = new THREE.Color(0xff6b2b); // warm orange
+                                const fireLight = new THREE.PointLight(fireColor, 5, 10); // color, intensity, distance
+                                fireLight.position.set(centerX, centerY+1, centerZ); // slightly above the firepit
+                                out.camp_meshes.add(fireLight);
+
+                                let clones = []
+                                for (var i = 0;i<5;i++){
+                                    clones.push(fbx.clone())
+                                }
+
+                                for (var i = 0; i < clones.length; i++){
+                                    const radius = 10
+                                    const angle = (i / 5) * Math.PI * 2;
+                                    const x = Math.cos(angle) * radius;
+                                    const z = Math.sin(angle) * radius;
+                                    clones[i].position.set(x+centerX, 0+centerY, z+centerZ);
+
+                                    // Make it face the center
+                                    clones[i].lookAt(centerX, centerY, centerZ);
+
+                                    out.camp_meshes.add(clones[i]);
+                                }
+                            }
+                            campcircle(0,0,0)
+                            
+                            campcircle(-30,0,30)
+                            campcircle(-30,0,-30)
+                            campcircle(30,0,-30)
+                            campcircle(30,0,30) 
+
+                            campcircle(-30,0,0)
+                            campcircle(30,0,0)
+                            campcircle(0,0,-30)
+                            campcircle(0,0,30)
+
+                            for (var i = 0; i < 10; i++){
+                                //campcircle(random(-100,200),0,random(-200,200))
+                            }
+
+
+                            let angle = 180
+                            let pi = Math.PI;
+                            const phi = angle * pi/180//MathUtils.degToRad( 90 );
+                            const theta = 180 * pi/180//MathUtils.degToRad( 180 );
+                            const sunPosition = new THREE.Vector3().setFromSphericalCoords( 10, phi, theta );
+
+                            out.sky.material.uniforms.sunPosition.value = sunPosition;        
+                            
+                            index.t.hemiLight.intensity = 0.2
+                            index.t.dirLight.intensity = 0.2
+                        });
+                        index.t.scene.add(out.camp_meshes)
+                        //return out.camp_meshes
+                     }
+                    out.update = function(){
+                        out.water.material.uniforms['time'].value += 1.0 / 60.0;                    
+                     }
+                return out })({})
+                async function startGame() {
+                    if (!gameBegun) {
+                        setup.sky = index.t.createSkybox(0);
+                        setup.mountains();
+                        setup.sea();
+                        setup.camp();
+
+                        gameBegun = true;
+                        index.v.loaded = true
+                        await index.f.loadModels();
+
+                    }
+
+                    setup.update();
+                 }
+
+
+                async function cutscene() {
+
+                    index.t.orbits[index.t.camera.orbitNum].enabled = false
+                    index.t.camera.position.set(5,0.75,5)
+                    index.t.camera.lookAt(0,3,0)
+                    daySetup = false
+
+                    const monologue = document.getElementById("monologue");
+                    monologue.volume = 1
+                    monologue.muted = false;
+                    monologue.play();
+                    monologue.addEventListener("ended", () => {
+                        index.v.playscene = "day1"
+                        daySetup = true
+                        index.v.fader.fadeIn()
+
+                    });
+                    monologue.currentTime = 0; // Reset the audio to the beginning
+
+                 }
+                async function battle(){
+                    if (daySetup){
+                        index.t.scene.remove(setup.camp_meshes)
+                        for (let y = 0; y < 23; y++) {
+                            for (let x = 0; x < 5; x++) {
+                                await index.f.spawnNPC(x * 3, 0, y * 3-50, 'spartan');
+                            }
+                        }
+                        for (let y = 0; y < 23; y++) {
+                            for (let x = 0; x < 5; x++) {
+                                await index.f.spawnNPC(40+x * 3, 0, y * 3-50, 'persian');
+                            }
+                        }
+                    }
+                    index.f.player.setPlayer(0,0,0,index.t.camera)
+                    index.t.orbits[index.t.camera.orbitNum].enabled = false
+                    daySetup = false
+                    index.v.fader.fadeOut()
+                    const audio = document.getElementById("battle");
+                    audio.muted = false;
+                    audio.play();
+
+                 }
+                 let gameStartPromise = null;
+                 let daySetup = true;
+                function play() {
+                    if (index.k.keysPressed.KeyO){
+                        const monologue = document.getElementById("monologue");
+                        monologue.currentTime = 111
+                    }
+                    if (!gameStartPromise) {
+                        gameStartPromise = startGame(); // call once, async
+                        return; // wait until it's done
+                    }
+
+                    if (!gameBegun) {
+                        return; // still waiting for async setup
+                    }
+
+                    index.r.world.step();
+                    index.t.renderer.render(index.t.scene, index.t.camera);
+
+                    index.f.spartans.forEach(i => i.update());
+                    index.f.persians.forEach(i => i.update());
+
+
+                    if (index.v.playscene == "camp" && daySetup){
+                        cutscene()
+                    } else if (index.v.playscene == "day1" && daySetup){
+                        battle()
+                        daySetup = false
+                    } else if (index.v.playscene == "day2" && daySetup){
+
+                    } else if (index.v.playscene == "day3" && daySetup){
+
+                    }
+                    index.v.fader.update(Math.min( 0.05, clock.getDelta() ) * 13)
+                 }
+
+            /*index*/
+                let index = {
+                    r : (function(out){ // rapier
+                        out.world= new RAPIER.World({ x: 0.0, y: -9.81, z: 0.0 })
+
+                        out.addPhysicsToMesh= function(mesh,physics=true){
+
+                            let {x,y,z} = mesh.position;
+                            const box = mesh.geometry.boundingBox;
+                            const size = new THREE.Vector3();
+                            box.getSize(size);     
+                            
+                            let rigidBodyDesc;
+                            if (physics){
+                                rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setCanSleep(true).setRotation(mesh.quaternion);
+                            } else {
+                                rigidBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z).setCanSleep(true).setRotation(mesh.quaternion);
+                            }
+
+                            let body = out.world.createRigidBody(rigidBodyDesc);
+                            let colliderDesc = RAPIER.ColliderDesc.cuboid(size.x/2, size.y/2, size.z/2);
+                            let collider = world.createCollider(colliderDesc, rigid);
+                        }
+                     return out })({})
+                        
+                    
+                   ,t : (function(out){ //threejs
+                        out.scene= new THREE.Scene(),
+
+                        out.camera= new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 5000 )
+                        out.scene.add(out.camera)
+
+                        out.camera.position.set(5,5,5)
+                        out.camera.lookAt(0,0,0)
+
+                        out.renderer = new THREE.WebGLRenderer({ antialias: true });
+                        out.renderer.setSize(innerWidth, innerHeight); 
+                        document.body.appendChild(out.renderer.domElement);
+                        uiCanvas.id = "uiCanvas";
+                        out.renderer.domElement.id = "threeCanvas";
+                        document.body.appendChild(uiCanvas); // this ensures it's on top
+
+
+                        out.scene.fog = new THREE.Fog( out.scene.background, 1, 5000 );
+
+                        out.hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2 );
+                        out.hemiLight.color.setHSL( 0.6, 1, 0.6 );
+                        out.hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+                        out.hemiLight.position.set( 0, 50, 0 );
+                        out.scene.add( out.hemiLight );
+                        
+                        out.dirLight = new THREE.DirectionalLight( 0xffffff, 3 );
+                        out.dirLight.color.setHSL( 0.1, 1, 0.95 );
+                        out.dirLight.position.set( - 1, 1.75, 1 );
+                        out.dirLight.position.multiplyScalar( 30 );
+                        out.scene.add( out.dirLight );
+
+                        out.dirLight.castShadow = true;
+                        out.dirLight.shadow.mapSize.width = 2048;
+                        out.dirLight.shadow.mapSize.height = 2048;
+
+                        const d = 50;
+
+                        out.dirLight.shadow.camera.left =   - d;
+                        out.dirLight.shadow.camera.right =    d;
+                        out.dirLight.shadow.camera.top =      d;
+                        out.dirLight.shadow.camera.bottom = - d;
+                        out.dirLight.shadow.camera.far =   3500;
+                        out.dirLight.shadow.bias =     - 0.0001;
+                        
+                        out.createSkybox= function(angle) {
+                            const sky = new Sky();
+                            sky.scale.setScalar( 450000 );
+                            let pi = Math.PI;
+                            const phi = angle * pi/180//MathUtils.degToRad( 90 );
+                            const theta = 180 * pi/180//MathUtils.degToRad( 180 );
+                            const sunPosition = new THREE.Vector3().setFromSphericalCoords( 10, phi, theta );
+
+                            sky.material.uniforms.sunPosition.value = sunPosition;
+
+                            function addCloud(scene, position = { x: 0, y: 20, z: -50 }, count = 5) {
+                                const loader = new THREE.TextureLoader();
+
+                                loader.load(textureURL, (cloudTexture) => {
+                                    for (let i = 0; i < count; i++) {
+                                        const size = Math.random() * 10 + 10;
+                                        const cloud = new THREE.Mesh(
+                                            new THREE.PlaneGeometry(size, size * 0.6),
+                                            new THREE.MeshLambertMaterial({
+                                                map: cloudTexture,
+                                                transparent: true,
+                                                opacity: 0.75,
+                                                depthWrite: false
+                                            })
+                                        );
+
+                                        // Position each cloud part randomly around the central position
+                                        const offsetX = (Math.random() - 0.5) * 20;
+                                        const offsetY = (Math.random() - 0.5) * 5;
+                                        const offsetZ = (Math.random() - 0.5) * 10;
+
+                                        cloud.position.set(
+                                            position.x + offsetX,
+                                            position.y + offsetY,
+                                            position.z + offsetZ
+                                        );
+
+                                        // Random rotation for variety
+                                        cloud.rotation.y = Math.random() * Math.PI * 2;
+
+                                        // Optional: Billboard behavior (update in your render loop)
+                                        cloud.index.kData.billboard = true;
+
+                                        scene.add(cloud);
+                                        clouds.push(cloud); // Store for later updates
+                                    }
+                                });
+                            }
+
+                            out.scene.add( sky );
+                            return sky;
+
+                        }
+                        out.orbits = [];
+                        out.addOrbit = function(camera, element=out.renderer.domElement){
+                            const orbitControls = new OrbitControls(camera, element);// originally renderer.domElement
+                            orbitControls.enableDamping = true
+                            orbitControls.minDistance = 0.01
+                            orbitControls.maxDistance = 150000
+                            orbitControls.enablePan = true
+                            //orbitControls.maxPolarAngle = Math.PI / 2 - 0.05
+                            orbitControls.update();
+                            out.orbits.push(orbitControls);
+                            camera.orbitNum = out.orbits.length - 1;
+                        }
+                        out.addOrbit(out.camera,uiCanvas)
+
+
+                     return out })({})
+                   ,f : (function(out){ //functions
+                        out.constrain= function(x,a,b){
+                            return x<a ? a : x>b ? b : x
+                         }
+                        
+                        out.deg= function(x){
+                            return x*57.29577951
+                         }
+                        
+                        out.rad= function(x){
+                            return a*0.01745329252
+                         }
+                        out.loadModelGLTF= function(path){
+                            let loader = new GLTFLoader();
+
+                            loader.load(path, gltf => {
+                                const clone = gltf.scene.clone();
+                                return clone;
+                            });
+                         }
+                        out.spartans = [], out.persians = []
+                        let loader = new FBXLoader()
+                        out.spartanModel = null;
+                        out.persianModel = null;
+                        out.loadModels = async function() {
+                            const loader = new FBXLoader();
+
+                            out.spartanModel = await new Promise((res, rej) =>
+                                loader.load('assets/trojan3.fbx', res, undefined, rej)
+                            );
+                            out.persianModel = await new Promise((res, rej) =>
+                                loader.load('assets/achilles.fbx', res, undefined, rej)
+                            );
+                         };
+                        out.spawnNPC = async function (x, y, z, nation) {
+                            const isSpartan = nation === 'spartan';
+                            const model = isSpartan ? out.spartanModel : out.persianModel;
+
+                            const base = await model;
+                            //const clone = SkeletonUtils.clone(base);
+                            const geometry = new THREE.BoxGeometry( 1, 1, 1 );
+                            const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+                            const clone = new THREE.Mesh( geometry, material );
+                            clone.scale.set(0.025, 0.025, 0.025);
+
+                            const wrapper = new THREE.Group();
+                            wrapper.add(clone);
+                            wrapper.position.set(x, y, z);
+                            index.t.scene.add(wrapper);
+
+                            const box = new THREE.Box3().setFromObject(clone);
+                            const center = new THREE.Vector3();
+                            box.getCenter(center);
+                            clone.position.sub(center);
+
+                            const mixer = new THREE.AnimationMixer(clone);
+                            const actions = {};
+                            const anims = ['Idle', 'run', 'attack', 'death' ];
+
+                            for (let animName of anims) {
+                                const animPath = `assets/animations/${animName === 'attack' ? 'attack1' : animName}.fbx`;
+                                const anim = await new Promise((res, rej) => new FBXLoader().load(animPath, res, undefined, rej));
+                                const clip = anim.animations[0];
+                                const action = mixer.clipAction(clip);
+                                action.setLoop(THREE.LoopRepeat);
+                                actions[animName] = action;
+                                if (animName === 'Idle') action.play();
+                                if (animName === 'death') {
+                                    action.setLoop(THREE.LoopOnce);
+                                    action.clampWhenFinished = true;
+                                }
+                             }
+
+                            const rig = {
+                                mesh: wrapper,
+                                mixer,
+                                actions,
+                                currentAction: '',
+                                dead: false,
+                                sinkingProgress: 0,
+                                playAnimation(name, fadeDuration = 0.3) {
+                                    if (this.currentAction === name || !this.actions[name]) return;
+
+                                    const prevAction = this.actions[this.currentAction];
+                                    const nextAction = this.actions[name];
+
+                                    if (prevAction) {
+                                        nextAction.reset();
+                                        nextAction.play();
+                                        prevAction.crossFadeTo(nextAction, fadeDuration, false);
+                                    } else {
+                                        nextAction.reset().fadeIn(fadeDuration).play();
+                                    }
+
+                                    this.currentAction = name;
+                                },
+                                update(delta = 1 / 60) {
+                                    mixer.update(delta);
+                                }
+                             };
+
+                            const stats = {
+                                target: null,
+                                speed: 0.07,
+                                health: 1,
+                                dead: false,
+                                hitsTaken: 0,
+                                sinking: false
+                             };
+
+
+                            function findTarget() {
+                                const enemies = isSpartan ? out.persians : [...out.spartans];
+
+                                // 👇 If the player is not a Spartan, add them to Persian targets
+                                if (!isSpartan && out.player?.mesh && !out.player.dead) {
+                                    enemies.push({ rig: out.player }); // Wrap player like other NPCs
+                                }
+
+                                let closest = null;
+                                let minDist = Infinity;
+
+                                for (let e of enemies) {
+                                    const dist = e.rig.mesh.position.distanceTo(rig.mesh.position);
+                                    if (dist < minDist) {
+                                        minDist = dist;
+                                        closest = e.rig;
+                                    }
+                                }
+
+                                // Ensure we skip sunken targets
+                                if (closest && closest.mesh.position.y < -3) {
+                                    return undefined;
+                                }
+
+                                return closest;
+                             }
+                            function checkCollision(directionVec) {
+                                const allOthers = [...out.spartans, ...out.persians].filter(npc => npc.rig.mesh !== rig.mesh);
+                                const futurePos = rig.mesh.position.clone().add(directionVec.clone().setLength(1)); // Look 1 unit ahead
+
+                                for (let npc of allOthers) {
+                                    const theirPos = npc.rig.mesh.position;
+                                    if (futurePos.distanceTo(theirPos) < 2) {
+                                        return npc.rig; // Something is in the way
+                                    }
+                                }
+
+                                return false; // All clear
+                             }
+
+
+                            function update(delta = 1 / 60) {
+                                /*rig.update(delta);
+
+                                // If dead, allow death animation to finish and start sinking
+                                if (rig.dead) {
+                                    if (rig.actions.death && !rig.actions.death.isRunning() && !stats.sinking) {
+                                        stats.sinking = true;
+                                        rig.sinkingProgress = 0;
+                                    }
+
+                                    if (stats.sinking) {
+                                        rig.sinkingProgress += 0.01;
+                                        rig.mesh.position.y -= 0.01;
+                                    }
+
+                                    return;
+                                }
+
+                                // Acquire or validate target
+                                if (!stats.target || stats.target.mesh.position.y < -99 || stats.target.hitsTaken >= 5) {
+                                    stats.target = findTarget();
+                                    if (!stats.target) {
+                                        rig.playAnimation('Idle');
+                                        return;
+                                    }
+                                }
+                                stats.target = findTarget();
+
+                                const targetPos = stats.target.mesh.position;
+                                const distance = rig.mesh.position.distanceTo(targetPos);
+
+                                // Calculate movement direction
+                                let dir = new THREE.Vector3().subVectors(targetPos, rig.mesh.position).normalize();
+                                let proposedMove = dir.clone().multiplyScalar(stats.speed);
+                                const blocked = checkCollision(proposedMove);
+
+                                // Turn toward the target smoothly
+                                const angle = Math.atan2(dir.x, dir.z);
+                                const targetQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+                                rig.mesh.quaternion.slerp(targetQuat, 0.05);
+
+                                // Handle collisions
+                                if (blocked) {
+                                    if (blocked === stats.target) {
+                                        // Play attack animation
+                                        if (!rig.attackCooldown && !blocked.dead) {
+                                            rig.playAnimation('attack');
+                                            rig.attackCooldown = true;
+
+                                            // Apply delayed damage for animation sync
+                                            setTimeout(() => {
+                                                if (!blocked.dead && blocked !== out.player) {
+                                                    blocked.hitsTaken = (blocked.hitsTaken || 0) + 1;
+
+                                                    if (blocked.hitsTaken >= 5) {
+                                                        blocked.dead = true;
+                                                        blocked.playAnimation?.('death');
+                                                    }
+                                                }
+                                            }, 500); // Match swing timing
+
+                                            // Reset cooldown
+                                            setTimeout(() => {
+                                                rig.attackCooldown = false;
+                                            }, 1200);
+                                        }
+                                    } else {
+                                        rig.playAnimation('Idle');
+                                    }
+                                } else {
+                                    if (distance > 3) {
+                                        rig.mesh.position.add(proposedMove);
+                                        rig.playAnimation('run');
+                                    } else {
+                                        rig.playAnimation('attack'); // In range, might be engaging
+                                    }
+                                }
+
+                                if (!stats.sinking) {
+                                    rig.mesh.position.y = 2; 
+                                }
+                                if (rig.mesh.position.y < -5) {
+                                    index.t.scene.remove(rig.mesh);
+
+                                    // Remove from array
+                                    const list = nation === 'spartan' ? out.spartans : out.persians;
+                                    const indexToRemove = list.findIndex(npc => npc.rig === rig);
+                                    if (indexToRemove !== -1) {
+                                        list.splice(indexToRemove, 1);
+                                    }
+
+                                    return; // Stop update entirely
+                                }
+                                */
+                             }
+
+                            const npc = { rig, update };
+                            (isSpartan ? out.spartans : out.persians).push(npc);
+
+                            return npc;
+                                
+                         };
+
+                        out.player = (function(player){
+                            player.setPlayer = async function(x,y,z,camera) {
+                                player.camera = camera
+                                const model = out.spartanModel
+                                const base = await model; // Wait for the model to be loaded
+                                player.mesh = SkeletonUtils.clone(base);
+                                player.mesh.scale.set(0.025, 0.025, 0.025);
+                                player.mesh.position.set(x,y,z)
+                                player.speed= 0.25,
+                                player.health= 1,
+                                player.dead= false
+                                player.enabled = true
+                                player.yaw = player.pitch = 0
+                                index.t.scene.add(player.mesh)
+                                player.currentAction= ''
+                                player.mixer = new THREE.AnimationMixer(player.mesh);
+                                player.actions = {};
+                                let anims = ['Idle', 'run', 'attack'];
+
+                                for (let animName of anims) {
+                                    let animPath
+                                    if (animName == 'Idle'){
+                                        animPath = `assets/animations/Idle.fbx`;
+                                    } else if (animName == 'attack'){
+                                        animPath = `assets/animations/attack1.fbx`;
+                                    } else if (animName == 'run'){
+                                        animPath = `assets/animations/run.fbx`;
+                                    }
+                                    player.animLoader = new FBXLoader();
+                                    async function loadFBXAnimation(path) {
+                                        return new Promise((resolve, reject) => {
+                                            player.animLoader = new FBXLoader();
+                                            player.animLoader.load(path, resolve, undefined, reject);
+                                        });
+                                    }
+                                    let anim = await loadFBXAnimation(animPath);
+                                    const clip = anim.animations[0];
+                                    const action = player.mixer.clipAction(clip);
+                                    action.setLoop(THREE.LoopRepeat);
+                                    player.actions[animName] = action;
+                                    if (animName === 'Idle') action.play(); // default to Idle
+                                }
+                            }
+                            player.playAnimation = function(name, fadeDuration = 0.3) {
+                                if (player.currentAction === name || !player.actions[name]) return;
+
+                                const prevAction = player.actions[player.currentAction];
+                                const nextAction = player.actions[name];
+
+                                if (prevAction) {
+                                    // Smoothly blend from previous to next
+                                    nextAction.reset();
+                                    nextAction.play();
+                                    prevAction.crossFadeTo(nextAction, fadeDuration, false);
+                                } else {
+                                    // If no previous action, just play
+                                    nextAction.reset().fadeIn(fadeDuration).play();
+                                }
+
+                                player.currentAction = name;
+                            }
+
+                            player.checkCollision = function(vector) {
+                                let stop = false
+                                if (out.spartans.length > 0) {
+                                    out.spartans.forEach(spartan => {
+                                        if (spartan.mesh){
+                                            if (spartan.mesh.position.distanceTo(player.mesh.position) < 1.5) stop = true
+                                        }                                })
+                                }
+                                if (out.persians.length > 0) {
+                                    out.persians.forEach(persian => {
+                                        if (persian.mesh){
+                                            if (persian.mesh.position.distanceTo(player.mesh.position) < 1.5) stop = true
+                                        }
+                                    })
+                                }
+                                if (stop) vector = new THREE.Vector3(0,0,0)
+                                return vector
+                            }
+                            function checkPlayerAttack() {
+                                const playerPos = player.mesh.position;
+                                const attackRange = 3;
+
+                                out.persians.forEach(persian => {
+                                    const target = persian.rig;
+                                    if (!target.dead && target.mesh.position.distanceTo(playerPos) <= attackRange) {
+                                        target.hitsTaken = (target.hitsTaken || 0) + 1;
+
+                                        if (target.hitsTaken >= 5) {
+                                            target.dead = true;
+                                            target.playAnimation?.('death');
+                                        }
+                                    }
+                                });
+                            }
+
+                            player.runPlayerPhysics = function (dt){
+                                if (index.k.mouseClicked && !player.dead && !player.attackCooldown) {
+                                    player.attackCooldown = true;
+                                    player.playAnimation('attack');
+
+                                    setTimeout(() => {
+                                        checkPlayerAttack(); // ← We'll define this next
+                                    }, 3166); // Delay to sync with animation impact
+
+                                    setTimeout(() => {
+                                        player.attackCooldown = false;
+                                    }, 1000); // Attack cooldown
+                                }
+                                player.mixer.update(dt);
+                                player.checkCollision()
+                                if (player.enabled) {
+                                    player.cosPitch = Math.cos(player.pitch);
+                                    player.sinPitch = Math.sin(player.pitch);
+                                    player.cosYaw = Math.cos(player.yaw);
+                                    player.sinYaw = Math.sin(player.yaw);
+
+                                    let sdir = player.sinYaw,
+                                        cdir = -player.cosYaw,
+                                        speed = player.speed
+
+                                    let impulse = {x:0,y:0,z:0}
+
+                                    let moving = false
+                                    let movingX = (index.k.keysHeld.KeyD || index.k.keysHeld.KeyA);
+                                    if (index.k.keysHeld.KeyD && index.k.keysHeld.KeyA) movingX = false
+                                    let movingZ = (index.k.keysHeld.KeyW || index.k.keysHeld.KeyS);
+                                    if (index.k.keysHeld.KeyW && index.k.keysHeld.KeyS) movingZ = false
+
+                                    if (movingX) {
+                                        if (!movingZ){
+                                            if (index.k.keysHeld.KeyD) {
+                                                impulse.x += cdir * speed;
+                                                impulse.z -= sdir * speed;
+                                            } 
+                                            if (index.k.keysHeld.KeyA) {
+                                                impulse.x -= cdir * speed;
+                                                impulse.z += sdir * speed;
+                                            }
+                                        } else {
+                                            if (index.k.keysHeld.KeyD) {
+                                                impulse.x += cdir * speed;
+                                                impulse.z -= sdir * speed;
+                                            } 
+                                            if (index.k.keysHeld.KeyA) {
+                                                impulse.x -= cdir * speed;
+                                                impulse.z += sdir * speed;
+                                            }
+                                        }
+                                    }
+
+                                    if (movingZ) {
+                                        if (index.k.keysHeld.KeyW) {
+                                            impulse.x -= sdir * speed;
+                                            impulse.z -= cdir * speed;
+                                        }
+                                        if (index.k.keysHeld.KeyS) {
+                                            impulse.x += sdir * speed;
+                                            impulse.z += cdir * speed;
+                                        }
+                                    }
+
+                                    impulse = player.checkCollision(impulse)
+
+                                    if (impulse.x !== 0 || impulse.z !== 0){
+                                        player.playAnimation('run');
+                                    } else {
+                                        player.playAnimation('Idle');
+                                    }
+
+                                    player.mesh.position.x += impulse.x
+                                    player.mesh.position.z += impulse.z
+
+                                    if (player.dead === true) {
+                                        player.body.setLinvel({x:0,y:0,z:0})
+                                        player.body.setTranslation({x: player.sz, y: player.sy, z: player.sz});
+                                        player.dead = false;
+                                        level.update = true;
+                                    }
+                                    if(index.k.keysHeld.KeyR && player.dead === false){
+                                        player.dead = true;
+                                    }
+                                    
+                                    let quaternion = new THREE.Quaternion();
+                                    quaternion.setFromEuler(new THREE.Euler(0, 0, 0, 'XYZ'));
+                        
+                                    let q = player.camera.quaternion;
+                                    
+                                    player.camera.position.set(player.mesh.position.x-10,player.mesh.position.y+10,player.mesh.position.z)
+                                    player.camera.lookAt(player.mesh.position)
+                                    let targetPosition = new THREE.Vector3(
+                                        player.mesh.position.x + impulse.x,
+                                        player.mesh.position.y,
+                                        player.mesh.position.z + impulse.z
+                                    );
+                                    if (impulse.x !== 0 || impulse.z !== 0) {
+                                        const targetDir = new THREE.Vector3().subVectors(targetPosition, player.mesh.position);
+                                        targetDir.y = 0; 
+                                        targetDir.normalize();
+
+                                        const angle = Math.atan2(targetDir.x, targetDir.z);
+                                        const targetQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+
+                                        player.mesh.quaternion.slerp(targetQuat, 0.1);
+
+                                    }
+                                    let euler = new THREE.Euler();
+                                    euler.setFromQuaternion(q, 'YXZ');
+                                    player.yaw = euler.y;  
+                                    player.pitch = euler.x;    
+                                    
+                                }
+                                }
+                                
+                        return player
+                        })({})
+
+			            
+                        
+                     return out })({})
+                   ,v : (function(out){ // variables
+                        out.scene = 'title'
+                        out.playscene = "camp"
+                        out.loaded = false
+                        out.fader = (function(fade) {
+                            fade = {
+                                alpha: 0,
+                                phase: 'Idle', // Idle, fadeIn, hold, fadeOut
+                                timer: 0,
+                                duration: 1.5,
+                                hold: 1.0,
+                                isBlack: false,
+                                tillGameStart: false,
+
+                                start(duration = 1.5, hold = 1.0,tillGameStart) {
+                                    this.phase = 'fadeIn';
+                                    this.timer = 0;
+                                    this.duration = duration;
+                                    this.hold = hold;
+                                    this.isBlack = false;
+                                    this.tillGameStart = true
+                                },
+                                fadeIn(){
+                                    this.phase = 'fadeIn'  
+                                    this.hold = 999999
+                                 },
+                                fadeOut(){
+                                    this.phase = 'fadeOut'  
+                                    this.timer = 0
+                                    this.duration = 0
+                                    this.alpha = 0
+                                },
+                                update(delta) {
+                                    this.timer += delta;
+
+                                    if (this.phase === 'fadeIn') {
+                                        this.alpha = Math.min(this.timer / this.duration, 1);
+                                        if (this.alpha >= 1) {
+                                            this.phase = 'hold';
+                                            this.timer = 0;
+                                            this.isBlack = true;
+                                        }
+                                    } else if (this.phase === 'hold') {
+                                        this.alpha = 1;
+                                        if (this.timer >= this.hold) {
+                                            if (!this.tillGameStart){
+                                                this.phase = 'fadeOut';
+                                                this.timer = 0;
+                                            } else if (out.loaded) {
+                                                this.phase = 'fadeOut'
+                                                this.timer = 0;
+                                            }
+                                        }
+                                    } else if (this.phase === 'fadeOut') {
+                                        this.alpha =  Math.max(1 - (this.timer / this.duration), 0);
+                                        if (this.alpha <= 0) {
+                                            this.phase = 'Idle';
+                                            this.isBlack = false;
+                                        }
+                                    }
+                                },
+
+                                draw() {
+                                    if (this.alpha > 0) {
+                                        ui_ctx.save();
+                                        ui_ctx.globalAlpha = this.alpha;
+                                        ui_ctx.fillStyle = "#000";
+                                        ui_ctx.fillRect(0, 0, ui_ctx.canvas.width, ui_ctx.canvas.height);
+                                        ui_ctx.restore();
+                                        if (this.tillGameStart && this.phase === 'fadeIn'){
+                                            const audio = document.getElementById("title_song");
+                                            audio.volume = 1 - this.alpha
+                                        } else if (this.tillGameStart && this.phase === 'fadeOut') {                            
+                                            const crickets = document.getElementById("crickets");
+                                            crickets.volume = 1 - this.alpha
+                                        }
+                                    }
+                                }
+                            };
+
+                            return fade;
+                        })({})
+                     return out })({})
+                    
+                   ,k : (function(controls){ //keys
+                        controls.mouseX=controls.mouseY=0
+                        controls.mousePressed=controls.mouseClicked=false
+                        controls.keysHeld={}
+                        controls.keysPressed={}
+                        controls.shift=false
+
+                        uiCanvas.onmousemove=function(e){
+                            controls.mouseX+=e.movementX
+                            controls.mouseY+=e.movementY
+                        }
+                        
+                        uiCanvas.onmousedown=function(){
+                            if (!controls.mousePressed) { 
+                                controls.mouseClicked = true; // ✅ Trigger only on the first press
+                            }
+                            controls.mousePressed=true
+                        }
+                        
+                        uiCanvas.onmouseup=function(){
+                            controls.mousePressed=false
+                        }
+                        
+                        document.onkeydown=function(e){
+                            if (   controls.keysHeld[e.code.toString()] !== true   ) {
+
+                                controls.keysPressed[e.code.toString()]=true
+
+                            } else {
+
+                                controls.keysPressed[e.code.toString()]=false
+
+                            }
+
+                            controls.keysHeld[e.code.toString()]=true
+                        }
+                        
+                        document.onkeyup=function(e){
+                            controls.keysHeld[e.code.toString()]=false
+                        }
+                        controls.update = function() {
+                            controls.keysPressed={}
+                            controls.mouseClicked=false
+                        }
+                                                
+                        return controls
+                        
+                     })({})
+                }
+                function onWindowResize() {
+                    index.t.camera.aspect = window.innerWidth / window.innerHeight;
+                    index.t.camera.updateProjectionMatrix();
+                    uiCanvas.width = window.innerWidth
+                    uiCanvas.height = window.innerHeight
+                    index.t.renderer.setSize( window.innerWidth, window.innerHeight );
+                 }
+                window.addEventListener( 'resize', onWindowResize );
+
+            /*draw*/
+            
+                function draw() {
+                    ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+
+
+                    if (showStartButton) {
+                        drawStartButton();
+                    } else if (index.v.scene === 'title'){
+                        drawTitle();
+                    } else if (index.v.scene === 'play' ){
+                        play();
+                    }
+                    if (index.f.player && index.f.player.enabled) index.f.player.runPlayerPhysics(1/60)
+
+
+                    requestAnimationFrame(draw);
+                    index.v.fader.update(1/60)
+                    index.v.fader.draw()
+                    index.k.update()
+                }
+
+
+                draw()
+        </script>          
+    </body>
+</html>

@@ -1,0 +1,3 @@
+window.player = function () {
+    
+}

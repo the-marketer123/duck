@@ -36,9 +36,26 @@
         <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/objects/Sky.js" type="module"></script>
         <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/stats.module.js" type="module"></script>
 
+        <!-- Rapier.js 3D-->
+        <script type="module">
+            const RAPIER = await import('https://cdn.skypack.dev/@dimforge/rapier3d-compat@0.11.2');
+            await RAPIER.init();
+        
+            // Make RAPIER globally available if needed
+            window.RAPIER = RAPIER;
+        
+            console.log("Rapier is ready!");
+        
+            // Now you can start your game logic
+        </script>
+        
+        
+        
 
-        <script src="js/map.js"></script>
+
         <script src="js/startup.js"></script>
+        <script src="js/map.js"></script>
+        <script src="js/models.js"></script>
         <script src="js/player.js"></script>
         <script src="js/index.js"></script>
     </body>

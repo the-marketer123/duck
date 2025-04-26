@@ -13,6 +13,17 @@
                 overflow:hidden;
                 font-family:trebuchet ms;
             }
+            canvas {
+                position: absolute;
+                top: 0;
+                left: 0;
+                display: block;
+            }
+            #ui-canvas {
+                
+                position:fixed;
+                z-index:1;
+            }
         </style>
     </head>
     <body>
@@ -27,36 +38,21 @@
         </script>
         <canvas id='ui-canvas' width='600' height='600'></canvas>
 
-        <!-- Three.js core -->
-        <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-
-        <!-- Addons -->
-        <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/PointerLockControls.js" type="module"></script>
-        <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js" type="module"></script>
-        <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/objects/Sky.js" type="module"></script>
-        <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/stats.module.js" type="module"></script>
 
         <!-- Rapier.js 3D-->
         <script type="module">
-            const RAPIER = await import('https://cdn.skypack.dev/@dimforge/rapier3d-compat@0.11.2');
-            await RAPIER.init();
-        
-            // Make RAPIER globally available if needed
-            window.RAPIER = RAPIER;
-        
-            console.log("Rapier is ready!");
-        
-            // Now you can start your game logic
+            window.rapierReady = (async () => {
+                const RAPIER = await import('https://cdn.skypack.dev/@dimforge/rapier3d-compat@0.11.2');
+                await RAPIER.init();
+                window.RAPIER = RAPIER; // make it global
+                console.log("Rapier ready!");
+            })();
         </script>
-        
-        
-        
 
-
-        <script src="js/startup.js"></script>
+        <script src="js/startup.js" type="module"></script>
         <script src="js/map.js"></script>
         <script src="js/models.js"></script>
         <script src="js/player.js"></script>
-        <script src="js/index.js"></script>
+        <script src="js/index.js" type="module"></script>
     </body>
 <html>

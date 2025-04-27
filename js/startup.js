@@ -115,16 +115,130 @@ app.rend.createSky = function (angle,scene) {
 
     return {sky,dirLight,hemiLight}
  }
-app.menu.text = function () {
+app.menu.text = function (text, x, y, font, size, back = false, back_color = 0xffffff) {
+    function roundRect(ctx, x, y, width, height, radius) {
+        ui_ctx.beginPath();
+        ui_ctx.moveTo(x + radius, y);
+        ui_ctx.lineTo(x + width - radius, y);
+        ui_ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ui_ctx.lineTo(x + width, y + height - radius);
+        ui_ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ui_ctx.lineTo(x + radius, y + height);
+        ui_ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ui_ctx.lineTo(x, y + radius);
+        ui_ctx.quadraticCurveTo(x, y, x + radius, y);
+        ui_ctx.closePath();
+    }
 
+    ui_ctx.font = size + "px " + font;
+    ui_ctx.textBaseline = "top"; // Important for easier alignment
+    
+    // Measure text
+    const metrics = ui_ctx.measureText(text);
+    const padding = 10; // Padding around text
+    const textWidth = metrics.width;
+    const textHeight = size; // Rough estimate (or tweak manually)
+
+    if (back) {
+        ui_ctx.fillStyle = "#" + back_color.toString(16).padStart(6, '0');
+        roundRect(ctx, x - padding / 2, y - padding / 2, textWidth + padding, textHeight + padding, 10);
+        ui_ctx.fill();
+    }
+
+    ui_ctx.fillStyle = "#000000"; // Set text color after background
+    ui_ctx.fillText(text, x, y);
+ };
+app.menu.update = function () {
+    app.menu.erase()
+    app.menu.buttons.forEach(b=>b.update())
  }
-app.menu.button = function () {
+app.menu.buttons = []
+app.menu.button = function (text, x, y, link, font, size, back = false, back_color = 0xff0000,hover=true) {
+    function roundRect(ui_ctx, x, y, width, height, radius) {
+        ui_ctx.beginPath();
+        ui_ctx.moveTo(x + radius, y);
+        ui_ctx.lineTo(x + width - radius, y);
+        ui_ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ui_ctx.lineTo(x + width, y + height - radius);
+        ui_ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ui_ctx.lineTo(x + radius, y + height);
+        ui_ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ui_ctx.lineTo(x, y + radius);
+        ui_ctx.quadraticCurveTo(x, y, x + radius, y);
+        ui_ctx.closePath();
+    }
 
- }
-app.menu.image = function () {
+    const padding = 5;
+    ui_ctx.font = size + "px " + font; 
+    ui_ctx.textBaseline = "top"; 
+    const metrics = ui_ctx.measureText(text);
+    const textWidth = metrics.width;
+    const textHeight = (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) || size; // fallback to size
 
-}
 
+    function update() {
+        if (button.hovered) {
+            ui_ctx.shadowColor = '#ffffff';
+            ui_ctx.shadowBlur = 20;
+        } else {
+            ui_ctx.shadowBlur = 0;
+        }
+        if (back) {
+            ui_ctx.fillStyle = "#" + back_color.toString(16).padStart(6, '0');
+            roundRect(ui_ctx, x - padding / 2, y - padding / 2, textWidth + padding, textHeight + padding, 5);
+            ui_ctx.fill();
+        }
+
+        ui_ctx.fillStyle = "#000000";
+        ui_ctx.fillText(text, x, y);
+    }
+    
+    let button = {
+        x: x - padding / 2,
+        y: y - padding / 2,
+        width: textWidth + padding,
+        height: textHeight + padding,
+        hovered: false,
+        update: update,
+        link: link,
+        hover: hover
+    };
+
+    app.menu.buttons.push(button);
+ };
+
+app.menu.image = function (path,x=0,y=0,width=100,height=100) {
+    const img = new Image(); 
+    img.src = path; 
+    
+    img.onload = function() { 
+        ui_ctx.drawImage(img, x, y, width, height);
+    };
+ };
+app.menu.erase = function () {
+    ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+ };
+
+uiCanvas.addEventListener("mousemove", (e) => {
+    const rect = uiCanvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    app.menu.buttons.forEach(button => {
+        button.hovered = (
+            mx >= button.x && mx <= button.x + button.width &&
+            my >= button.y && my <= button.y + button.height
+        );
+    });
+ });
+
+uiCanvas.addEventListener("click", () => {
+    app.menu.buttons.forEach(button => {
+        if (button.hovered) {
+            button.link();
+        }
+    });
+ });
 //
 
 

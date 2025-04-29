@@ -10,7 +10,8 @@ scene.add(mesh);
 app.rend.createSky(20, scene);
 
 
-app.menu.button('test',window.innerWidth/2,window.innerHeight/2,function(){console.log('hi')},'Arial','25',true)
+app.menu.button('test','center',window.innerHeight/2,function(){console.log('hi')},'Arial','25',true)
+app.menu.text('test','center',window.innerHeight/4,'Arial','25')
 // Renderer
 let renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight); 
@@ -23,9 +24,22 @@ camera.position.set(0, 0, 5);
 camera.lookAt(0, 0, 0);
 scene.add(camera);
 
+let world = new RAPIER.World({x:0,y:-9.7,z:0})
+app.phys.addToMesh(mesh,world)
 
+//nessecary stuff
+window.addEventListener("resize", () => {
+    app.menu.recenter();
+
+    uiCanvas.width = window.innerWidth
+    uiCanvas.height = window.innerHeight
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+ });
 // loop
 function draw() {
+    app.phys.update(world)
     app.menu.update()
     statsui.update();
     renderer.render(scene, camera);

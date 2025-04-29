@@ -33,7 +33,15 @@ window.uiCanvas.height = window.innerHeight
 
 ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
 
-
+app.phys.update = function (world) {
+    world.step()
+    app.phys.bodies.forEach(b=> {
+        if (b){
+            b.update()
+        }
+    })
+}
+app.phys.bodies=[]
 app.phys.addToMesh = function(mesh,world,physics=true) {
         let {x,y,z} = mesh.position;
         mesh.geometry.computeBoundingBox()
@@ -54,13 +62,16 @@ app.phys.addToMesh = function(mesh,world,physics=true) {
         let collider = world.createCollider(colliderDesc, body);
 
         function update () {
-            mesh.position = body.translation()
-            mesh.quaternion = body.rotation()
+            mesh.position.copy( body.translation() )
+            mesh.quaternion.copy( body.rotation() )
             if (remove){
                 world.removeRigidBody(body)
                 body = undefined
+                app.phys.bodies[num] = undefined
             }
         }
+        let num = app.phys.bodies.length
+        app.phys.bodies.push({body,remove,collider,update})
         return {body,remove,collider,update}
  }
 app.rend.createMesh = function (
@@ -115,130 +126,179 @@ app.rend.createSky = function (angle,scene) {
 
     return {sky,dirLight,hemiLight}
  }
-app.menu.text = function (text, x, y, font, size, back = false, back_color = 0xffffff) {
-    function roundRect(ctx, x, y, width, height, radius) {
-        ui_ctx.beginPath();
-        ui_ctx.moveTo(x + radius, y);
-        ui_ctx.lineTo(x + width - radius, y);
-        ui_ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-        ui_ctx.lineTo(x + width, y + height - radius);
-        ui_ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-        ui_ctx.lineTo(x + radius, y + height);
-        ui_ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-        ui_ctx.lineTo(x, y + radius);
-        ui_ctx.quadraticCurveTo(x, y, x + radius, y);
-        ui_ctx.closePath();
-    }
-
-    ui_ctx.font = size + "px " + font;
-    ui_ctx.textBaseline = "top"; // Important for easier alignment
-    
-    // Measure text
-    const metrics = ui_ctx.measureText(text);
-    const padding = 10; // Padding around text
-    const textWidth = metrics.width;
-    const textHeight = size; // Rough estimate (or tweak manually)
-
-    if (back) {
-        ui_ctx.fillStyle = "#" + back_color.toString(16).padStart(6, '0');
-        roundRect(ctx, x - padding / 2, y - padding / 2, textWidth + padding, textHeight + padding, 10);
-        ui_ctx.fill();
-    }
-
-    ui_ctx.fillStyle = "#000000"; // Set text color after background
-    ui_ctx.fillText(text, x, y);
- };
 app.menu.update = function () {
     app.menu.erase()
     app.menu.buttons.forEach(b=>b.update())
  }
-app.menu.buttons = []
-app.menu.button = function (text, x, y, link, font, size, back = false, back_color = 0xff0000,hover=true) {
-    function roundRect(ui_ctx, x, y, width, height, radius) {
-        ui_ctx.beginPath();
-        ui_ctx.moveTo(x + radius, y);
-        ui_ctx.lineTo(x + width - radius, y);
-        ui_ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-        ui_ctx.lineTo(x + width, y + height - radius);
-        ui_ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-        ui_ctx.lineTo(x + radius, y + height);
-        ui_ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-        ui_ctx.lineTo(x, y + radius);
-        ui_ctx.quadraticCurveTo(x, y, x + radius, y);
-        ui_ctx.closePath();
+app.menu.buttons = [];
+app.menu.items = []; // stores buttons, images, and texts
+app.menu.button = function (text, x, y, link, font, size, back = false, back_color = 0xff0000, hover = true) {
+    let variable = false
+    if (x == 'center' || variable){
+        x = window.innerWidth/2
+        variable = true
     }
-
-    const padding = 5;
-    ui_ctx.font = size + "px " + font; 
-    ui_ctx.textBaseline = "top"; 
-    const metrics = ui_ctx.measureText(text);
-    const textWidth = metrics.width;
-    const textHeight = (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) || size; // fallback to size
-
+     function roundRect(ui_ctx, x, y, width, height, radius) {
+         ui_ctx.beginPath();
+         ui_ctx.moveTo(x + radius, y);
+         ui_ctx.lineTo(x + width - radius, y);
+         ui_ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+         ui_ctx.lineTo(x + width, y + height - radius);
+         ui_ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+         ui_ctx.lineTo(x + radius, y + height);
+         ui_ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+         ui_ctx.lineTo(x, y + radius);
+         ui_ctx.quadraticCurveTo(x, y, x + radius, y);
+         ui_ctx.closePath();
+     }
+ 
+     const padding = 5;
+     ui_ctx.font = size + "px " + font;
+     ui_ctx.textBaseline = "top";
+     const metrics = ui_ctx.measureText(text);
+     const textWidth = metrics.width;
+     const textHeight = (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) || size;
 
     function update() {
+        if (variable) {
+            x = window.innerWidth/2
+        }
+        ui_ctx.font = size + "px " + font; // Always set font before measuring or drawing text!
+        ui_ctx.textBaseline = "top";
+    
         if (button.hovered) {
             ui_ctx.shadowColor = '#ffffff';
             ui_ctx.shadowBlur = 20;
         } else {
             ui_ctx.shadowBlur = 0;
         }
+    
         if (back) {
             ui_ctx.fillStyle = "#" + back_color.toString(16).padStart(6, '0');
-            roundRect(ui_ctx, x - padding / 2, y - padding / 2, textWidth + padding, textHeight + padding, 5);
+            roundRect(ui_ctx, button.x, button.y, button.width, button.height, 5);
             ui_ctx.fill();
         }
-
+    
         ui_ctx.fillStyle = "#000000";
-        ui_ctx.fillText(text, x, y);
-    }
+        ui_ctx.fillText(text, button.x + padding / 2, button.y + padding / 2);
+     }
     
-    let button = {
-        x: x - padding / 2,
-        y: y - padding / 2,
-        width: textWidth + padding,
-        height: textHeight + padding,
-        hovered: false,
-        update: update,
-        link: link,
-        hover: hover
-    };
-
-    app.menu.buttons.push(button);
+ 
+     let button = {
+         x: x - padding / 2,
+         y: y - padding / 2,
+         width: textWidth + padding,
+         height: textHeight + padding,
+         hovered: false,
+         update: update,
+         link: link,
+         hover: hover,
+         original: { text, x, y, link, font, size, back, back_color, hover, center:variable },
+     };
+ 
+     app.menu.buttons.push(button);
+     app.menu.items.push({ type: "button", data: button.original });
  };
+ 
+app.menu.image = function (path, x = 0, y = 0, width = 100, height = 100) {
+     const img = new Image();
+     img.src = path;
+ 
+     img.onload = function () {
+         ui_ctx.drawImage(img, x, y, width, height);
+     };
+ 
+     app.menu.items.push({ type: "image", data: { path, x, y, width, height } });
+ };
+ 
+app.menu.text = function (text, x, y, font, size, back = false, back_color = 0xffffff) {
+    let variable = false
+    if (x == 'center' || variable){
+        x = window.innerWidth/2
+        variable = true
+    }
+    function roundRect(ctx, x, y, width, height, radius) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+    }
 
-app.menu.image = function (path,x=0,y=0,width=100,height=100) {
-    const img = new Image(); 
-    img.src = path; 
-    
-    img.onload = function() { 
-        ui_ctx.drawImage(img, x, y, width, height);
-    };
+    // >>> SET FONT before measuring or drawing
+    ui_ctx.font = size + "px " + font;
+    ui_ctx.textBaseline = "top";
+
+    const metrics = ui_ctx.measureText(text);
+    const padding = 10;
+    const textWidth = metrics.width;
+    const textHeight = size; // approx
+
+    if (back) {
+        ui_ctx.fillStyle = "#" + back_color.toString(16).padStart(6, '0');
+        roundRect(ui_ctx, x - padding / 2, y - padding / 2, textWidth + padding, textHeight + padding, 10);
+        ui_ctx.fill();
+    }
+
+    ui_ctx.fillStyle = "#000000";
+    ui_ctx.fillText(text, x, y);
+
+    // Save the data for future recentering
+    app.menu.items.push({ type: "text", data: { text, x, y, font, size, back, back_color, center:variable } });
  };
 app.menu.erase = function () {
-    ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+     ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
  };
+ 
+app.menu.recenter = function () {
+    app.menu.erase();
+    app.menu.buttons = [];
 
-uiCanvas.addEventListener("mousemove", (e) => {
-    const rect = uiCanvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
-    app.menu.buttons.forEach(button => {
-        button.hovered = (
-            mx >= button.x && mx <= button.x + button.width &&
-            my >= button.y && my <= button.y + button.height
-        );
-    });
- });
-
-uiCanvas.addEventListener("click", () => {
-    app.menu.buttons.forEach(button => {
-        if (button.hovered) {
-            button.link();
+    let smth = app.menu.items
+    app.menu.items = []
+    smth.forEach(item => {
+        const d = item.data;
+        if (item.type === "button") {
+            if (d.center) d.x = 'center'
+            app.menu.button(d.text, d.x, d.y, d.link, d.font, d.size, d.back, d.back_color, d.hover);
+        } else if (item.type === "image") {
+            app.menu.image(d.path, d.x, d.y, d.width, d.height);
+        } else if (item.type === "text") {
+            if (d.center) d.x = 'center'
+            app.menu.text(d.text, d.x, d.y, d.font, d.size, d.back, d.back_color);
         }
     });
+ };
+uiCanvas.addEventListener("mousemove", (e) => {
+     const rect = uiCanvas.getBoundingClientRect();
+     const mx = e.clientX - rect.left;
+     const my = e.clientY - rect.top;
+ 
+     app.menu.buttons.forEach(button => {
+         button.hovered = (
+             mx >= button.x && mx <= button.x + button.width &&
+             my >= button.y && my <= button.y + button.height
+         );
+     });
  });
+ 
+uiCanvas.addEventListener("click", () => {
+     app.menu.buttons.forEach(button => {
+         if (button.hovered) {
+             button.link();
+         }
+     });
+ });
+ 
+ // Call this on window resize
+
+
 //
 
 

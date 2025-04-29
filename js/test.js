@@ -1,17 +1,17 @@
 await window.rapierReady;
 
 let scene = new THREE.Scene();
+scene.fog = new THREE.Fog( scene.background, 1, 500 );
 
 // test
 let mesh = app.rend.createMesh();
 scene.add(mesh);
 
 // sky
-app.rend.createSky(20, scene);
+let TOD = 20 // time of day (tod) 
+let prevTOD = TOD // just to not constantly create skies
+let skybox = app.rend.createSky(TOD, scene);
 
-
-app.menu.button('test','center',window.innerHeight/2,function(){console.log('hi')},'Arial','25',true)
-app.menu.text('test','center',window.innerHeight/4,'Arial','25')
 // Renderer
 let renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight); 
@@ -27,9 +27,37 @@ scene.add(camera);
 let world = new RAPIER.World({x:0,y:-9.7,z:0})
 app.phys.addToMesh(mesh,world)
 
+
+
+
+//menu & ui
+function mm_back_setup() { // main menu background setup
+    let group = new THREE.Group()
+    let ground_mat = new THREE.MeshStandardMaterial({color:0x009900,side: THREE.DoubleSide})
+    let ground_geo = new THREE.PlaneGeometry(1000,1000)
+    let ground_pos = new THREE.Vector3(0,490,0)
+    let ground = app.rend.createMesh(ground_mat,ground_geo,ground_pos);
+    ground.rotation.x = -Math.PI / 2;
+    group.add(ground)
+    //group.visible = false
+    scene.add(group)
+    return group
+}
+let main_menu_ground = mm_back_setup()
+
+function main_menu (){
+    main_menu_ground.visible = true
+    camera.position.set(0,500,0)
+    app.ui.text('fishing simulator','center',window.innerHeight * 0.15,"Cal Sans",'75',0xff0000,25,false)
+    app.ui.button('play','center',window.innerHeight * 0.5,function(){console.log('play')},"Cal Sans",'25',0xff0000,25)
+    app.ui.button('settings','center',window.innerHeight * 0.65,function(){console.log('settings')},"Cal Sans",'25',0xff0000,25)
+    app.ui.button('secrets','center',window.innerHeight * 0.8,function(){console.log('secrets')},"Cal Sans",'25',0xff0000,25)
+}
+main_menu()
+
 //nessecary stuff
 window.addEventListener("resize", () => {
-    app.menu.recenter();
+    app.ui.recenter();
 
     uiCanvas.width = window.innerWidth
     uiCanvas.height = window.innerHeight
@@ -39,10 +67,15 @@ window.addEventListener("resize", () => {
  });
 // loop
 function draw() {
+    TOD+=1
     app.phys.update(world)
-    app.menu.update()
+    app.ui.update()
     statsui.update();
     renderer.render(scene, camera);
     requestAnimationFrame(draw);
+    if (prevTOD !== TOD){
+        skybox = app.rend.createSky(TOD, scene, skybox);
+    }
+    prevTOD = TOD
 }
 draw();

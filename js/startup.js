@@ -7,6 +7,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import  Stats  from 'three/addons/libs/stats.module.js'
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import models from './models.js'
 
 window.THREE = THREE
 window.Water = Water
@@ -21,7 +22,8 @@ window.app = {
     rend:{},
     phys:{},
     ui:{},
-}
+    models:models,
+};
 
 window.statsui = new Stats()
 document.body.appendChild(window.statsui.dom)
@@ -134,7 +136,6 @@ app.rend.createSky = function (angle,scene,prevsky=undefined) {
 // ui
 app.ui.update = function () {
     app.ui.erase()
-    console.log(app.ui.back_color)
     if (app.ui.back_color && app.ui.back_color !== 'none') {
         app.ui.background(app.ui.back_color);
     }

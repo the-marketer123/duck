@@ -20,6 +20,7 @@ document.body.appendChild(renderer.domElement);
 
 // Camera
 let camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.01, 5000);
+let orbit = new OrbitControls(camera, uiCanvas)
 camera.position.set(0, 0, 5); 
 camera.lookAt(0, 0, 0);
 scene.add(camera);
@@ -28,7 +29,7 @@ let world = new RAPIER.World({x:0,y:-9.7,z:0})
 app.phys.addToMesh(mesh,world)
 
 
-
+//dock models + animation
 
 //menu & ui
 function mm_back_setup() { // main menu background setup
@@ -46,6 +47,7 @@ function mm_back_setup() { // main menu background setup
 let main_menu_ground = mm_back_setup()
 
 function main_menu (){
+    TOD = 35
     main_menu_ground.visible = true
     camera.position.set(0,500,0)
     app.ui.text('fishing simulator','center',window.innerHeight * 0.15,"Cal Sans",'75',0xff0000,25,false)
@@ -53,7 +55,9 @@ function main_menu (){
     app.ui.button('settings','center',window.innerHeight * 0.65,function(){console.log('settings')},"Cal Sans",'25',0xff0000,25)
     app.ui.button('secrets','center',window.innerHeight * 0.8,function(){console.log('secrets')},"Cal Sans",'25',0xff0000,25)
 }
-main_menu()
+//main_menu()
+let duck = app.models.createDuck()
+scene.add(duck)
 
 //nessecary stuff
 window.addEventListener("resize", () => {
@@ -67,7 +71,6 @@ window.addEventListener("resize", () => {
  });
 // loop
 function draw() {
-    TOD+=1
     app.phys.update(world)
     app.ui.update()
     statsui.update();

@@ -39,13 +39,23 @@ ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
 
 //ducks
 app.ducks.list = [] // list of all living ducks
-app.ducks.createdebugduck = function (pos){
+app.ducks.createdebugDuck = function (scene,pos){
     let duck = app.models.createDuck()
+    duck.position.copy(pos)
     scene.add(duck)
     let object = {
         model:duck,
-        
+        anim:'idle',
+        update:function(){
+            if (this.anim == 'walk'){
+                this.model.animation.walk()
+            }
+            if (this.anim == 'idle'){
+                this.model.animation.idle()
+            }
+        }
     };
+    app.ducks.list.push(object)
     return object
 }
 //user input

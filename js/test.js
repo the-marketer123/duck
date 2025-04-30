@@ -55,8 +55,11 @@ function main_menu (){
     app.ui.button('secrets','center',window.innerHeight * 0.8,function(){console.log('secrets')},"Cal Sans",'25',0xff0000,25)
 }
 //main_menu()
-let duck = app.models.createDuck()
-scene.add(duck)
+let duck1 = app.ducks.createdebugDuck(scene,new THREE.Vector3(-3, 0,-3))
+let duck2 = app.ducks.createdebugDuck(scene,new THREE.Vector3(-3, 0, 3))
+let duck3 = app.ducks.createdebugDuck(scene,new THREE.Vector3( 3, 0, 3))
+let duck4 = app.ducks.createdebugDuck(scene,new THREE.Vector3( 3, 0,-3))
+let duck5 = app.ducks.createdebugDuck(scene,new THREE.Vector3( 0, 0, 0))
 
 //nessecary stuff
 window.addEventListener("resize", () => {
@@ -70,10 +73,11 @@ window.addEventListener("resize", () => {
  });
 // loop
 function draw() {
+    app.ducks.list.forEach(b=>b.update())
     if (app.user.keysHeld.j){
-        duck.animation.walk()
+        app.ducks.list.forEach(b=>{b.anim = 'walk'})
     } else {
-        duck.animation.idle()
+        app.ducks.list.forEach(b=>{b.anim = 'idle'})
     }
     app.phys.update(world)
     app.ui.update()

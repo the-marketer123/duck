@@ -20,8 +20,6 @@ document.body.appendChild(renderer.domElement);
 
 // Camera
 let camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.01, 5000);
-camera.position.set(0, 0, 5); 
-camera.lookAt(0, 0, 0);
 scene.add(camera);
 
 let world = new RAPIER.World({x:0,y:-9.7,z:0})
@@ -55,8 +53,19 @@ function main_menu (){
     app.ui.button('secrets','center',window.innerHeight * 0.8,function(){console.log('secrets')},"Cal Sans",'25',0xff0000,25)
 }
 main_menu()
-let duck = app.models.createDuck()
-scene.add(duck)
+let ducks = []
+ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3(-3, 498,-9)));
+ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3(-3, 498, -3)));
+ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( 3, 498, -3)));
+ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( 3, 498,-9)));
+
+ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( 4, 498,-6)));
+ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( -4, 498,-6)));
+ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( 5, 498,-6)));
+ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( -5, 498,-6)));
+
+ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( 0, 498, -3)));
+ducks.forEach(b=>b.model.lookAt(0,498,0))
 //nessecary stuff
 window.addEventListener("resize", () => {
     app.ui.recenter();
@@ -69,6 +78,12 @@ window.addEventListener("resize", () => {
  });
 // loop
 function draw() {
+    app.ducks.list.forEach(b=>b.update())
+    if (app.user.keysHeld.j){
+        app.ducks.list.forEach(b=>{b.anim = 'walk'})
+    } else {
+        app.ducks.list.forEach(b=>{b.anim = 'idle'})
+    }
     app.phys.update(world)
     app.ui.update()
     statsui.update();

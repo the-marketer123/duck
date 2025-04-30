@@ -23,6 +23,8 @@ window.app = {
     phys:{},
     ui:{},
     models:models,
+    ducks:{},
+    user:{},
 };
 
 window.statsui = new Stats()
@@ -35,6 +37,69 @@ window.uiCanvas.height = window.innerHeight
 
 ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
 
+//ducks
+app.ducks.list = [] // list of all living ducks
+app.ducks.createdebugduck = function (pos){
+    let duck = app.models.createDuck()
+    scene.add(duck)
+    let object = {
+        model:duck,
+        
+    };
+    return object
+}
+//user input
+app.user =(function(controls){
+                        
+    controls.mouseX=controls.mouseY=0
+    controls.mousePressed=controls.mouseClicked=false
+    controls.keysHeld={}
+    controls.keysPressed={}
+    controls.shift=false
+
+    uiCanvas.onmousemove=function(e){
+        controls.mouseX+=e.movementX
+        controls.mouseY+=e.movementY
+    }
+    
+    uiCanvas.onmousedown=function(){
+        if (!controls.mousePressed) { 
+            controls.mouseClicked = true; // ✅ Trigger only on the first press
+        }
+        controls.mousePressed=true
+    }
+    
+    uiCanvas.onmouseup=function(){
+        controls.mousePressed=false
+    }
+    
+    document.onkeydown=function(e){
+        if (   controls.keysHeld[e.key.toString()] !== true   ) {
+
+            controls.keysPressed[e.key.toString()]=true
+
+        } else {
+
+            controls.keysPressed[e.key.toString()]=false
+
+        }
+
+        controls.keysHeld[e.key.toString()]=true
+    }
+    
+    document.onkeyup=function(e){
+        controls.keysHeld[e.key.toString()]=false
+    }
+    controls.update = function() {
+        controls.keysPressed={}
+        controls.mouseClicked=false
+        requestAnimationFrame(controls.update)
+    }
+    controls.update()
+                            
+    return controls
+    
+ })({})
 // physics
 app.phys.update = function (world) {
     world.step()

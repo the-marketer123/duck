@@ -40,7 +40,6 @@ function mm_back_setup() { // main menu background setup
     let ground = app.rend.createMesh(ground_mat,ground_geo,ground_pos);
     ground.rotation.x = -Math.PI / 2;
     group.add(ground)
-    //group.visible = false
     scene.add(group)
     return group
 }
@@ -71,6 +70,11 @@ window.addEventListener("resize", () => {
  });
 // loop
 function draw() {
+    if (app.user.keysHeld.j){
+        duck.animation.walk()
+    } else {
+        duck.animation.idle()
+    }
     app.phys.update(world)
     app.ui.update()
     statsui.update();

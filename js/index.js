@@ -28,9 +28,27 @@ app.phys.addToMesh(mesh,world)
 
 //dock models + animation
 
-//menu & ui
+//menu & ui   
+
+let ducks = []
 function mm_back_setup() { // main menu background setup
     let group = new THREE.Group()
+    
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(-3, 498,-9)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(-3, 498, -3)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 3, 498, -3)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 3, 498,-9)));
+
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 4, 498,-6)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -4, 498,-6)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 5, 498,-6)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -5, 498,-6)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -7, 498,-4)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(7, 498,-4)));
+
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 0, 498, -3)));
+    ducks.forEach(b=>b.model.lookAt(0,498,0))
+
     let ground_mat = new THREE.MeshStandardMaterial({color:0x009900,side: THREE.DoubleSide})
     let ground_geo = new THREE.PlaneGeometry(1000,1000)
     let ground_pos = new THREE.Vector3(0,490,0)
@@ -48,24 +66,13 @@ function main_menu (){
     main_menu_ground.visible = true
     camera.position.set(0,500,0)
     app.ui.text('fishing simulator','center',window.innerHeight * 0.15,"Cal Sans",'75',0xff0000,25,false)
+    app.ui.text('by gm studios',10,window.innerHeight * 0.95,"Cal Sans",'25',0xff0000,25,false)
     app.ui.button('play','center',window.innerHeight * 0.5,function(){console.log('play')},"Cal Sans",'25',0xff0000,25)
     app.ui.button('settings','center',window.innerHeight * 0.65,function(){console.log('settings')},"Cal Sans",'25',0xff0000,25)
     app.ui.button('secrets','center',window.innerHeight * 0.8,function(){console.log('secrets')},"Cal Sans",'25',0xff0000,25)
+    app.ui.image('./gm_logo.png',60,60,50,50)
 }
 main_menu()
-let ducks = []
-ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3(-3, 498,-9)));
-ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3(-3, 498, -3)));
-ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( 3, 498, -3)));
-ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( 3, 498,-9)));
-
-ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( 4, 498,-6)));
-ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( -4, 498,-6)));
-ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( 5, 498,-6)));
-ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( -5, 498,-6)));
-
-ducks.push(app.ducks.createdebugDuck(scene,new THREE.Vector3( 0, 498, -3)));
-ducks.forEach(b=>b.model.lookAt(0,498,0))
 //nessecary stuff
 window.addEventListener("resize", () => {
     app.ui.recenter();
@@ -79,10 +86,10 @@ window.addEventListener("resize", () => {
 // loop
 function draw() {
     app.ducks.list.forEach(b=>b.update())
-    if (app.user.keysHeld.j){
-        app.ducks.list.forEach(b=>{b.anim = 'walk'})
-    } else {
-        app.ducks.list.forEach(b=>{b.anim = 'idle'})
+    if (app.user.keysHeld.j && ducks.length > 0){
+        ducks.forEach(b=>{b.anim = 'walk'})
+    } else if (ducks.length > 0) {
+        ducks.forEach(b=>{b.anim = 'idle'})
     }
     app.phys.update(world)
     app.ui.update()

@@ -216,10 +216,12 @@ app.ui.update = function () {
     }
     app.ui.buttons.forEach(b=>b.update())
     app.ui.texts.forEach(b=>b.update())
+    app.ui.images.forEach(b=>b.update())
  }
 app.ui.back_color = 'none'; // current background color, none means transparent
 app.ui.texts = [];  //text
 app.ui.buttons = []; //buttons
+app.ui.images = []; //images
 app.ui.items = []; // stores buttons, images, and texts
 app.ui.button = function (text, x, y, link, font, size, back_color = 0xff0000, padding = 15, back = true, hover = true, outline = true, outline_thickness = 1) {
     let variable = false;
@@ -364,9 +366,11 @@ app.ui.image = function (path, x = 0, y = 0, width = 100, height = 100) {
      img.src = path;
  
      img.onload = function () {
-         ui_ctx.drawImage(img, x, y, width, height);
+        function update () {
+            ui_ctx.drawImage(img, x, y, width, height);
+        }
+        app.ui.images.push({ update });
      };
- 
      app.ui.items.push({ type: "image", data: { path, x, y, width, height } });
  };
  

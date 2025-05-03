@@ -117,30 +117,79 @@ models.createDuck = function(
     rightLimb.add(rightFoot);
 
     let animation = {
-        walk: function() {
-            leftLimb.rotation.x = (Math.sin(Date.now() * 0.005) *   0.75) + 0.25;
-            rightLimb.rotation.x = (Math.sin(Date.now() * 0.005) * -0.75) + 0.25;
-            
-            headGroup.rotation.x = Math.sin(Date.now() * 0.005) * 0.075;
-
-            bodyGroup.rotation.z = Math.sin(Date.now() * 0.005) * 0.075;
-
-            tail.rotation.z = Math.sin(Date.now() * 0.005) * 0.05;
+        // Current values to interpolate from
+        current: {
+            leftLimb: { x: 0 },
+            rightLimb: { x: 0 },
+            headGroup: { x: 0 },
+            bodyGroup: { z: 0 },
+            tail: { z: 0 }
         },
-        idle: function() {
-            leftLimb.rotation.x = 0;
-            rightLimb.rotation.x = 0;
-            
-            headGroup.rotation.x = Math.sin(Date.now() * 0.005) * 0.0075;
-
-            bodyGroup.rotation.z = Math.sin(Date.now() * 0.005) * 0.0075;
-
-            tail.rotation.z = 0;
+    
+        // Common easing function
+        lerp: function(start, end, t) {
+            return start + (end - start) * t;
+        },
+    
+        // Call this every frame and pass the desired state
+        update: function(state) {
+            const time = Date.now() * 0.005;
+            const easing = 0.1; // Controls speed of easing
+    
+            // Compute target values based on the state
+            let target = {
+                leftLimb: { x: 0 },
+                rightLimb: { x: 0 },
+                headGroup: { x: 0 },
+                bodyGroup: { z: 0 },
+                tail: { z: 0 }
+            };
+    
+            if (state === "walk") {
+                target.leftLimb.x  = (Math.sin(time) *  0.75) + 0.25;
+                target.rightLimb.x = (Math.sin(time) * -0.75) + 0.25;
+                target.headGroup.x = Math.sin(time) * 0.075;
+                target.bodyGroup.z = Math.sin(time) * 0.075;
+                target.tail.z      = Math.sin(time) * 0.05;
+            } else if (state === "idle") {
+                target.headGroup.x = Math.sin(time) * 0.0075;
+                target.bodyGroup.z = Math.sin(time) * 0.0075;
+            }
+    
+            // Interpolate and apply
+            animation.current.leftLimb.x  = animation.lerp(animation.current.leftLimb.x,  target.leftLimb.x,  easing);
+            animation.current.rightLimb.x = animation.lerp(animation.current.rightLimb.x, target.rightLimb.x, easing);
+            animation.current.headGroup.x = animation.lerp(animation.current.headGroup.x, target.headGroup.x, easing);
+            animation.current.bodyGroup.z = animation.lerp(animation.current.bodyGroup.z, target.bodyGroup.z, easing);
+            animation.current.tail.z      = animation.lerp(animation.current.tail.z,      target.tail.z,      easing);
+    
+            // Apply to the actual objects
+            leftLimb.rotation.x   = animation.current.leftLimb.x;
+            rightLimb.rotation.x  = animation.current.rightLimb.x;
+            headGroup.rotation.x  = animation.current.headGroup.x;
+            bodyGroup.rotation.z  = animation.current.bodyGroup.z;
+            tail.rotation.z       = animation.current.tail.z;
         }
-
-    }
+    }        
     duck.animation = animation;
 
     return duck;
+}
+models.createDock = function(
+    x,
+    y,
+    z,
+    length = 10,
+    rot = Math.PI / 2,
+){
+    const dock = new THREE.Group();
+    const dockMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+    const dockGeometry = new THREE.BoxGeometry(1, 0.5, length);
+    const dockMesh = new THREE.Mesh(dockGeometry, dockMaterial);
+    dockMesh.position.set(x, y, z);
+    dockMesh.rotation.y = rot;
+    dock.add(dockMesh);
+
+    return dock;
 }
 export default models;

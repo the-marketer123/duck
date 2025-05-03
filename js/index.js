@@ -1,4 +1,5 @@
 await window.rapierReady;
+import models from './models.js'
 
 let scene = new THREE.Scene();
 scene.fog = new THREE.Fog( scene.background, 1, 500 );
@@ -20,15 +21,14 @@ document.body.appendChild(renderer.domElement);
 
 // Camera
 let camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.01, 5000);
+let orbit = new OrbitControls(camera, uiCanvas)
 scene.add(camera);
 
 let world = new RAPIER.World({x:0,y:-9.7,z:0})
 app.phys.addToMesh(mesh,world)
 
-
-//dock models + animation
-
-//menu & ui   
+let dock = models.createDock(0, 490, 0, 10, Math.PI / 2);
+scene.add(dock);
 
 let ducks = []
 function mm_back_setup() { // main menu background setup
@@ -65,16 +65,18 @@ function main_menu (){
     TOD = 35
     main_menu_ground.visible = true
     camera.position.set(0,500,0)
+    if (orbit) orbit.target = camera.position;
     app.ui.text('fishing simulator','center',window.innerHeight * 0.15,"Cal Sans",'75',0xff0000,25,false)
-    app.ui.text('by gm studios',10,window.innerHeight * 0.95,"Cal Sans",'25',0xff0000,25,false)
     app.ui.button('play','center',window.innerHeight * 0.5,function(){console.log('play')},"Cal Sans",'25',0xff0000,25)
     app.ui.button('settings','center',window.innerHeight * 0.65,function(){console.log('settings')},"Cal Sans",'25',0xff0000,25)
     app.ui.button('secrets','center',window.innerHeight * 0.8,function(){console.log('secrets')},"Cal Sans",'25',0xff0000,25)
-    app.ui.image('./gm_logo.png',60,60,50,50)
+    app.ui.image('./gm_logo.png',10,window.innerHeight * 0.86,95,95)
+    app.ui.text('studios',22,window.innerHeight * 0.95,"Cal Sans",'25',0xff0000,25,false)
 }
 main_menu()
 //nessecary stuff
 window.addEventListener("resize", () => {
+    console.log('resized')
     app.ui.recenter();
 
     uiCanvas.width = window.innerWidth
@@ -86,11 +88,22 @@ window.addEventListener("resize", () => {
 // loop
 function draw() {
     app.ducks.list.forEach(b=>b.update())
+
     if (app.user.keysHeld.j && ducks.length > 0){
         ducks.forEach(b=>{b.anim = 'walk'})
     } else if (ducks.length > 0) {
         ducks.forEach(b=>{b.anim = 'idle'})
     }
+
+    if (app.user.keysPressed.k && main_menu_ground.visible) {
+        app.ui.erase()
+        main_menu_ground.visible = false
+    } else if (!main_menu_ground.visible && app.user.keysPressed.k) {   
+        console.log('k pressed')
+        main_menu_ground.visible = true
+        main_menu()    
+    }
+
     app.phys.update(world)
     app.ui.update()
     statsui.update();
@@ -100,5 +113,6 @@ function draw() {
         skybox = app.rend.createSky(TOD, scene, skybox);
     }
     prevTOD = TOD
+    app.user.update()
 }
 draw();

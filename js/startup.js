@@ -47,12 +47,7 @@ app.ducks.createdebugDuck = function (scene,pos){
         model:duck,
         anim:'idle',
         update:function(){
-            if (this.anim == 'walk'){
-                this.model.animation.walk()
-            }
-            if (this.anim == 'idle'){
-                this.model.animation.idle()
-            }
+            this.model.animation.update(this.anim);
         }
     };
     app.ducks.list.push(object)
@@ -87,14 +82,14 @@ app.user =(function(controls){
         if (   controls.keysHeld[e.key.toString()] !== true   ) {
 
             controls.keysPressed[e.key.toString()]=true
-
+            controls.keysHeld[e.key.toString()]=true
+            
         } else {
 
             controls.keysPressed[e.key.toString()]=false
 
         }
 
-        controls.keysHeld[e.key.toString()]=true
     }
     
     document.onkeyup=function(e){
@@ -103,9 +98,7 @@ app.user =(function(controls){
     controls.update = function() {
         controls.keysPressed={}
         controls.mouseClicked=false
-        requestAnimationFrame(controls.update)
     }
-    controls.update()
                             
     return controls
     
@@ -210,7 +203,7 @@ app.rend.createSky = function (angle,scene,prevsky=undefined) {
  }
 // ui
 app.ui.update = function () {
-    app.ui.erase()
+    ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
     if (app.ui.back_color && app.ui.back_color !== 'none') {
         app.ui.background(app.ui.back_color);
     }
@@ -288,6 +281,8 @@ app.ui.button = function (text, x, y, link, font, size, back_color = 0xff0000, p
 
         ui_ctx.fillStyle = "#000000";
         ui_ctx.fillText(text, button.x + padding / 2, button.y + padding / 2);
+        ui_ctx.shadowBlur = 0;
+
     }
 
     let button = {
@@ -299,7 +294,7 @@ app.ui.button = function (text, x, y, link, font, size, back_color = 0xff0000, p
         update: update,
         link: link,
         hover: hover,
-        original: { text, x, y, link, font, size, back, back_color, hover, center: variable }
+        original: { text, x, y, link, font, size, back, back_color, hover, center: variable, padding, outline, outline_thickness }
     };
 
     app.ui.buttons.push(button);
@@ -367,6 +362,7 @@ app.ui.image = function (path, x = 0, y = 0, width = 100, height = 100) {
  
      img.onload = function () {
         function update () {
+            ui_ctx.imageSmoothingEnabled = true;
             ui_ctx.drawImage(img, x, y, width, height);
         }
         app.ui.images.push({ update });
@@ -389,29 +385,38 @@ app.ui.background = function (color) {
 
 
 app.ui.erase = function () {
-     ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+    app.ui.items = []
+    app.ui.images = []
+    app.ui.texts = []
+    app.ui.buttons = []
+    ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
  };
  
 app.ui.recenter = function () {
-    app.ui.erase();
+    ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
+
     app.ui.buttons = [];
     app.ui.texts = [];
+    app.ui.images = [];
 
-    let smth = app.ui.items
-    app.ui.items = []
+    const smth = app.ui.items;
+    app.ui.items = [];
+
     smth.forEach(item => {
         const d = item.data;
+
         if (item.type === "button") {
-            if (d.center) d.x = 'center'
-            app.ui.button(d.text, d.x, d.y, d.link, d.font, d.size, d.back, d.back_color, d.hover);
+            if (d.center) d.x = 'center';
+            app.ui.button(d.text, d.x, d.y, d.link, d.font, d.size, d.back_color, d.padding || 15, d.back, d.hover, d.outline ?? true, d.outline_thickness ?? 1);
         } else if (item.type === "image") {
             app.ui.image(d.path, d.x, d.y, d.width, d.height);
         } else if (item.type === "text") {
-            if (d.center) d.x = 'center'
-            app.ui.text(d.text, d.x, d.y, d.font, d.size, d.back, d.back_color);
+            if (d.center) d.x = 'center';
+            app.ui.text(d.text, d.x, d.y, d.font, d.size, d.back_color, d.padding || 15, d.back, d.outline ?? true, d.outline_thickness ?? 1);
         }
     });
  };
+
 uiCanvas.addEventListener("mousemove", (e) => {
      const rect = uiCanvas.getBoundingClientRect();
      const mx = e.clientX - rect.left;

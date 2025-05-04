@@ -11,7 +11,7 @@ const player = {
     jumpSpeed:0.2,
     orbit:null,
     update:function(){
-        
+        if (this.physBody == null) return;
         let cosPitch = Math.cos(-this.pitch);
         let sinPitch = Math.sin(-this.pitch);
         let cosYaw = Math.cos(-this.yaw);
@@ -46,13 +46,22 @@ const player = {
         }
         impulse.x *= 100;
         impulse.z *= 100;
-        console.log(impulse)
+
         this.physBody.setLinvel({x:impulse.x, y:this.physBody.linvel().y, z:impulse.z}, true);
         this.physBody.setRotation(this.body.quaternion, true);
 
         this.body.position.set(this.physBody.translation().x, this.physBody.translation().y, this.physBody.translation().z);
         if (impulse.x != 0 || impulse.z != 0){
-            this.body.lookAt(this.body.position.x + impulse.x, this.body.position.y, this.body.position.z + impulse.z);
+            //this.body.lookAt(this.body.position.x + impulse.x, this.body.position.y, this.body.position.z + impulse.z);
+            let targetPosition = new THREE.Vector3(this.body.position.x + impulse.x, this.body.position.y, this.body.position.z + impulse.z);
+            const targetDir = new THREE.Vector3().subVectors(targetPosition, this.body.position);
+            targetDir.y = 0; 
+            targetDir.normalize();
+
+            const angle = Math.atan2(targetDir.x, targetDir.z);
+            const targetQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+
+            this.body.quaternion.slerp(targetQuat, 0.1);
         }
         this.orbit.target.copy(this.body.position);
         this.orbit.update();
@@ -78,7 +87,7 @@ const player = {
             let black = new THREE.MeshStandardMaterial({color:0x000000})
 
             let torso_geo = new THREE.BoxGeometry(2,2.5,2)
-            let eye_geo = new THREE.BoxGeometry(0.5,0.5,0.5)
+            let eye_geo = new THREE.BoxGeometry(0.25,0.5,0.25)
 
             let torso = new THREE.Mesh(torso_geo,tan)
             this.body.add(torso)
@@ -89,8 +98,8 @@ const player = {
             this.body.add(eye2)
 
             torso.position.set(0,0,0);
-            eye1.position.set(0.5,1,0.5)
-            eye2.position.set(-0.5,1,0.5)
+            eye1.position.set(0.5,0.8,1)
+            eye2.position.set(-0.5,0.8,1)
         } else {
             this.body = mesh;
         }

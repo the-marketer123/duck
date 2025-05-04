@@ -217,10 +217,39 @@ app.ui.buttons = []; //buttons
 app.ui.images = []; //images
 app.ui.items = []; // stores buttons, images, and texts
 app.ui.button = function (text, x, y, link, font, size, back_color = 0xff0000, padding = 15, back = true, hover = true, outline = true, outline_thickness = 1) {
-    let variable = false;
-    if (x == 'center' || variable) {
-        x = window.innerWidth / 2;
-        variable = true;
+    let custom_x = x;
+    let custom_y = y;
+    if (x.custom) {
+        switch (x.mode) {
+            case 'center':
+                x = window.innerWidth / 2;
+            break;
+            case 'offset':
+                x = window.innerWidth + x.offset
+            break;
+            case 'offset_middle':
+                x = (window.innerWidth / 2) - x.offset
+            break;
+            case 'percent':
+                x = window.innerWidth * x.offset
+            break;
+        }
+    }
+    if (y.custom) {
+        switch (y.mode) {
+            case 'center':
+                y = window.innerHeight / 2;
+            break;
+            case 'offset':
+                y = window.innerHeight + y.offset
+            break;
+            case 'offset_middle':
+                y = (window.innerHeight / 2) - y.offset
+            break;
+            case 'percent':
+                y = window.innerHeight * y.offset
+            break;
+        }
     }
 
     function roundRect(ctx, x, y, width, height, radius) {
@@ -241,14 +270,14 @@ app.ui.button = function (text, x, y, link, font, size, back_color = 0xff0000, p
     ui_ctx.textBaseline = "top";
     const metrics = ui_ctx.measureText(text);
     const textWidth = metrics.width;
-    if (variable)x -= textWidth/2
+    if (custom_x && custom_x.mode == 'center')x -= textWidth/2
     const textHeight = (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) || size;
 
     function update() {
-        if (variable) {
-            x = window.innerWidth / 2;
-        }
-
+        console.log('x')
+        console.log(x)
+        console.log('y')
+        console.log(y)
         ui_ctx.font = size + "px " + font;
         ui_ctx.textBaseline = "top";
 
@@ -284,7 +313,6 @@ app.ui.button = function (text, x, y, link, font, size, back_color = 0xff0000, p
         ui_ctx.shadowBlur = 0;
 
     }
-
     let button = {
         x: x - padding / 2,
         y: y - padding / 2,
@@ -294,17 +322,45 @@ app.ui.button = function (text, x, y, link, font, size, back_color = 0xff0000, p
         update: update,
         link: link,
         hover: hover,
-        original: { text, x, y, link, font, size, back, back_color, hover, center: variable, padding, outline, outline_thickness }
+        original: { text, x:custom_x, y:custom_y, link, font, size, back, back_color, hover, padding, outline, outline_thickness }
     };
-
     app.ui.buttons.push(button);
     app.ui.items.push({ type: "button", data: button.original });
  };
 app.ui.text = function (text, x, y, font, size, back_color = 0xff0000, padding = 15, back = true, outline = true, outline_thickness = 1) {
-    let variable = false;
-    if (x == 'center' || variable) {
-        x = window.innerWidth / 2;
-        variable = true;
+    let custom_x = x;
+    let custom_y = y;
+    if (x.custom) {
+        switch (x.mode) {
+            case 'center':
+                x = window.innerWidth / 2;
+            break;
+            case 'offset':
+                x = window.innerWidth + x.offset
+            break;
+            case 'offset_middle':
+                x = (window.innerWidth / 2) - x.offset
+            break;
+            case 'percent':
+                x = window.innerWidth * x.offset
+            break;
+        }
+    }
+    if (y.custom) {
+        switch (y.mode) {
+            case 'center':
+                y = window.innerHeight / 2;
+            break;
+            case 'offset':
+                y = window.innerHeight + y.offset
+            break;
+            case 'offset_middle':
+                y = (window.innerHeight / 2) - y.offset
+            break;
+            case 'percent':
+                y = window.innerHeight * y.offset
+            break;
+        }
     }
 
     function roundRect(ctx, x, y, width, height, radius) {
@@ -325,7 +381,7 @@ app.ui.text = function (text, x, y, font, size, back_color = 0xff0000, padding =
     ui_ctx.textBaseline = "top";
     const metrics = ui_ctx.measureText(text);
     const textWidth = metrics.width;
-    if (variable) x -= textWidth/2
+    if (custom_x && custom_x.mode == 'center') x -= textWidth/2
     const textHeight = (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) || size;
 
     function update() {
@@ -354,9 +410,44 @@ app.ui.text = function (text, x, y, font, size, back_color = 0xff0000, padding =
     }
 
     app.ui.texts.push({ update });
-    app.ui.items.push({ type: "text", data: { text, x, y, font, size, back, back_color, center: variable } });
+    app.ui.items.push({ type: "text", data: { text, x:custom_x, y:custom_y, font, size, back, back_color} });
  };
 app.ui.image = function (path, x = 0, y = 0, width = 100, height = 100) {
+    let custom_x = x;
+    let custom_y = y;
+    if (x.custom) {
+        switch (x.mode) {
+            case 'center':
+                x = window.innerWidth / 2;
+            break;
+            case 'offset':
+                x = window.innerWidth + x.offset
+            break;
+            case 'offset_middle':
+                x = (window.innerWidth / 2) - x.offset
+            break;
+            case 'percent':
+                x = window.innerWidth * x.offset
+            break;
+        }
+    }
+    
+    if (y.custom) {
+        switch (y.mode) {
+            case 'center':
+                y = window.innerHeight / 2;
+            break;
+            case 'offset':
+                y = window.innerHeight + y.offset
+            break;
+            case 'offset_middle':
+                y = (window.innerHeight / 2) - y.offset
+            break;
+            case 'percent':
+                y = window.innerHeight * y.offset
+            break;
+        }
+    }
      const img = new Image();
      img.src = path;
  
@@ -366,8 +457,8 @@ app.ui.image = function (path, x = 0, y = 0, width = 100, height = 100) {
             ui_ctx.drawImage(img, x, y, width, height);
         }
         app.ui.images.push({ update });
+        app.ui.items.push({ type: "image", data: { path, custom_x, y:custom_y, width, height } });
      };
-     app.ui.items.push({ type: "image", data: { path, x, y, width, height } });
  };
  
 app.ui.remove_background = function() {
@@ -406,12 +497,10 @@ app.ui.recenter = function () {
         const d = item.data;
 
         if (item.type === "button") {
-            if (d.center) d.x = 'center';
             app.ui.button(d.text, d.x, d.y, d.link, d.font, d.size, d.back_color, d.padding || 15, d.back, d.hover, d.outline ?? true, d.outline_thickness ?? 1);
         } else if (item.type === "image") {
             app.ui.image(d.path, d.x, d.y, d.width, d.height);
         } else if (item.type === "text") {
-            if (d.center) d.x = 'center';
             app.ui.text(d.text, d.x, d.y, d.font, d.size, d.back_color, d.padding || 15, d.back, d.outline ?? true, d.outline_thickness ?? 1);
         }
     });

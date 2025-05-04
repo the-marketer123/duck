@@ -65,18 +65,17 @@ function main_menu (){
     TOD = 35
     main_menu_ground.visible = true
     camera.position.set(0,500,0)
-    if (orbit) orbit.target = camera.position;
-    app.ui.text('fishing simulator','center',window.innerHeight * 0.15,"Cal Sans",'75',0xff0000,25,false)
-    app.ui.button('play','center',window.innerHeight * 0.5,function(){console.log('play')},"Cal Sans",'25',0xff0000,25)
-    app.ui.button('settings','center',window.innerHeight * 0.65,function(){console.log('settings')},"Cal Sans",'25',0xff0000,25)
-    app.ui.button('secrets','center',window.innerHeight * 0.8,function(){console.log('secrets')},"Cal Sans",'25',0xff0000,25)
-    app.ui.image('./gm_logo.png',10,window.innerHeight * 0.86,95,95)
-    app.ui.text('studios',22,window.innerHeight * 0.95,"Cal Sans",'25',0xff0000,25,false)
+    if (orbit) orbit.target = camera.position; orbit.update()
+    app.ui.text('fishing simulator',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.15},"Cal Sans",'75',0xff0000,25,false)
+    app.ui.button('play',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.5},function(){console.log('play')},"Cal Sans",'25',0xff0000,25)
+    app.ui.button('settings',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.65},function(){console.log('settings')},"Cal Sans",'25',0xff0000,25)
+    app.ui.button('secrets',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.8},function(){console.log('secrets')},"Cal Sans",'25',0xff0000,25)
+    app.ui.image('./gm_logo.png',0,{custom:true,mode:'offset',offset:-95},95,95)
+    app.ui.text('studios',10,{custom:true,mode:'offset',offset:-30},"Cal Sans",'25',0xff0000,25,false)
 }
 main_menu()
 //nessecary stuff
 window.addEventListener("resize", () => {
-    console.log('resized')
     app.ui.recenter();
 
     uiCanvas.width = window.innerWidth
@@ -99,7 +98,6 @@ function draw() {
         app.ui.erase()
         main_menu_ground.visible = false
     } else if (!main_menu_ground.visible && app.user.keysPressed.k) {   
-        console.log('k pressed')
         main_menu_ground.visible = true
         main_menu()    
     }
@@ -116,3 +114,5 @@ function draw() {
     app.user.update()
 }
 draw();
+app.ui.recenter();
+

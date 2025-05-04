@@ -1,11 +1,11 @@
 await window.rapierReady;
-import models from './models.js'
 
 let scene = new THREE.Scene();
-scene.fog = new THREE.Fog( scene.background, 1, 500 );
+//scene.fog = new THREE.Fog( scene.background, 1, 500 );
 
 // test
 let mesh = app.rend.createMesh();
+mesh.position.set(0, 1, 0);
 scene.add(mesh);
 
 // sky
@@ -64,8 +64,8 @@ let main_menu_ground = mm_back_setup()
 function main_menu (){
     TOD = 35
     main_menu_ground.visible = true
-    camera.position.set(0,493,0)
-    if (orbit) orbit.target.copy(camera.position); orbit.update(); orbit.target.x+=1;
+    camera.position.set(0,0,0)
+    if (orbit) orbit.target.copy(camera.position); orbit.update(); camera.position.x+=30; camera.position.y+=30;
     app.ui.text('fishing simulator',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.15},"Cal Sans",'75',0xff0000,25,false)
     app.ui.button('play',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.5},function(){console.log('play')},"Cal Sans",'25',0xff0000,25)
     app.ui.button('settings',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.65},function(){console.log('settings')},"Cal Sans",'25',0xff0000,25)
@@ -74,7 +74,7 @@ function main_menu (){
     app.ui.text('studios',10,{custom:true,mode:'offset',offset:-30},"Cal Sans",'25',0xff0000,25,false)
 }
 main_menu()
-map(scene)
+loadMap(scene,world)
 //nessecary stuff
 window.addEventListener("resize", () => {
     app.ui.recenter();

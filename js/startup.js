@@ -8,15 +8,21 @@ import  Stats  from 'three/addons/libs/stats.module.js'
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import models from './models.js'
+import map from './map.js'
+import player from './player.js'
 
-window.THREE = THREE
-window.Water = Water
-window.PointerLockControls = PointerLockControls
-window.OrbitControls = OrbitControls
-window.Sky = Sky
-window.GLTFLoader = GLTFLoader
-window.FBXLoader = FBXLoader
-window.SkeletonUtils = SkeletonUtils
+
+window.THREE = THREE;
+window.Water = Water;
+window.PointerLockControls = PointerLockControls;
+window.OrbitControls = OrbitControls;
+window.Sky = Sky;
+window.GLTFLoader = GLTFLoader;
+window.FBXLoader = FBXLoader;
+window.SkeletonUtils = SkeletonUtils;
+window.models = models;
+window.loadMap = map;
+window.player = player
 
 window.app = {
     rend:{},
@@ -113,38 +119,45 @@ app.phys.update = function (world) {
     })
  }
 app.phys.bodies=[]
-app.phys.addToMesh = function(mesh,world,physics=true) {
-        let {x,y,z} = mesh.position;
-        mesh.geometry.computeBoundingBox()
-        const box = mesh.geometry.boundingBox;
-        const size = new THREE.Vector3();
-        box.getSize(size);     
-        
-        let rigidBodyDesc;
-        if (physics){
-            rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setCanSleep(true).setRotation(mesh.quaternion);
-        } else {
-            rigidBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z).setCanSleep(true).setRotation(mesh.quaternion);
-        }
+app.phys.addToMesh = function(mesh, world, physics = true) {
+    let x = mesh.position?.x ?? 0;
+    let y = mesh.position?.y ?? 0;
+    let z = mesh.position?.z ?? 0;
+    mesh.geometry.computeBoundingBox();
+    const box = mesh.geometry.boundingBox;
+    const size = new THREE.Vector3();
+    box.getSize(size);
 
-        let remove = false;
-        let body = world.createRigidBody(rigidBodyDesc);
-        let colliderDesc = RAPIER.ColliderDesc.cuboid(size.x/2, size.y/2, size.z/2);
-        let collider = world.createCollider(colliderDesc, body);
+    const quat = mesh.quaternion;
+    const rapierQuat = [quat.x, quat.y, quat.z, quat.w];
 
-        function update () {
-            mesh.position.copy( body.translation() )
-            mesh.quaternion.copy( body.rotation() )
-            if (remove){
-                world.removeRigidBody(body)
-                body = undefined
-                app.phys.bodies[num] = undefined
-            }
+    let rigidBodyDesc = physics
+        ? RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setCanSleep(true).setRotation(rapierQuat)
+        : RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z).setCanSleep(true).setRotation(rapierQuat);
+
+    let body = world.createRigidBody(rigidBodyDesc);
+    body.setRotation(mesh.quaternion);
+
+    let colliderDesc = RAPIER.ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2);
+    let collider = world.createCollider(colliderDesc, body);
+
+    let remove = false;
+    function update() {
+        console.log(body.translation())
+        mesh.position.copy(body.translation());
+        mesh.quaternion.copy(body.rotation());
+        if (remove) {
+            world.removeRigidBody(body);
+            app.phys.bodies[num] = undefined;
         }
-        let num = app.phys.bodies.length
-        app.phys.bodies.push({body,remove,collider,update})
-        return {body,remove,collider,update}
- }
+    }
+
+    let num = app.phys.bodies.length;
+    app.phys.bodies.push({ body, remove, collider, update });
+
+    return { body, remove, collider, update };
+ };
+
 // rendering
 app.rend.createMesh = function (
     material = new THREE.MeshStandardMaterial( { color: 0xffffff } ),
@@ -274,10 +287,6 @@ app.ui.button = function (text, x, y, link, font, size, back_color = 0xff0000, p
     const textHeight = (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) || size;
 
     function update() {
-        console.log('x')
-        console.log(x)
-        console.log('y')
-        console.log(y)
         ui_ctx.font = size + "px " + font;
         ui_ctx.textBaseline = "top";
 

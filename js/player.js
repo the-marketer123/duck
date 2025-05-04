@@ -7,9 +7,11 @@ const player = {
     grounded:false,
     pitch:0,
     yaw:0,
+    deltaYaw:0,
+    deltaPitch:0,
     walkSpeed:0.1,
     jumpSpeed:0.2,
-    orbit:null,
+    pointerlock:null,
     update:function(){
         if (this.physBody == null) return;
         let cosPitch = Math.cos(-this.pitch);
@@ -63,22 +65,64 @@ const player = {
 
             this.body.quaternion.slerp(targetQuat, 0.1);
         }
-        this.orbit.target.copy(this.body.position);
-        this.orbit.update();
+        // Clamp pitch to avoid flipping
+        const minPitch = -Math.PI / 2 + 0.1;
+        const maxPitch = Math.PI / 2 - 0.1;
 
-        let cam = this.orbit.object;
-        
-        let q = cam.quaternion;
-                                
-        let euler = new THREE.Euler();
-        euler.setFromQuaternion(q, 'YXZ');
-        this.yaw = euler.y;  
-        this.pitch = euler.x;  
+        this.cameraDistance = 6;        // Default zoom distance
+        this.minCameraDistance = 2;     // Zoom in limit
+        this.maxCameraDistance = 20;    // Zoom out limit
+        if (this.pointerlock.isLocked) {
+
+            this.yaw += this.deltaYaw || 0;
+            this.pitch -= this.deltaPitch || 0;
+            this.pitch = Math.max(minPitch, Math.min(maxPitch, this.pitch));
+
+            // Reset deltas
+            this.deltaYaw = 0;
+            this.deltaPitch = 0;
+
+            // Orbit camera around the player
+            const cam = this.pointerlock.object;
+            const radius = this.cameraDistance; // Distance behind the player
+
+            const offsetX = radius * Math.sin(this.yaw) * Math.cos(this.pitch);
+            const offsetY = radius * Math.sin(this.pitch);
+            const offsetZ = radius * Math.cos(this.yaw) * Math.cos(this.pitch);
+
+            cam.position.set(
+                this.body.position.x + offsetX,
+                this.body.position.y + 2 + offsetY, // eye height + pitch
+                this.body.position.z + offsetZ
+            );
+        }
+
+        // Always look at the player's upper body
+        cam.lookAt(this.body.position.x, this.body.position.y + 1.5, this.body.position.z);
+
      },
-    create:function(pos,rot,scene,world,orbit,mesh='default'){
+    create:function(pos,rot,scene,world,pointerlock,mesh='default'){
+
+        document.addEventListener('mousemove', (event) => {
+            this.deltaYaw -= event.movementX * 0.002;
+            this.deltaPitch -= event.movementY * 0.002;
+        });
+        
+        this.cameraDistance = 6;        // Default zoom distance
+        this.minCameraDistance = 2;     // Zoom in limit
+        this.maxCameraDistance = 20;    // Zoom out limit
+
+        document.addEventListener('wheel', (e) => {
+            if (document.pointerLockElement) {
+                this.cameraDistance += e.deltaY * 0.01; // Adjust sensitivity here
+                this.cameraDistance = Math.max(this.minCameraDistance, Math.min(this.maxCameraDistance, this.cameraDistance));
+            }
+        });
+        
+
         this.scene = scene
         this.world = world
-        this.orbit = orbit
+        this.pointerlock = pointerlock
         if (mesh == 'default'){
             this.body = new THREE.Group()
 

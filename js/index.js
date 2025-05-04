@@ -18,7 +18,10 @@ let scene = new THREE.Scene();
 
 // Camera
     let camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.01, 5000);
-    let orbit = new OrbitControls(camera, uiCanvas)
+    let pointerlock = new PointerLockControls(camera, uiCanvas)
+    uiCanvas.addEventListener('click', function() {
+        pointerlock.lock();
+    });
     scene.add(camera);
 
     let world = new RAPIER.World({x:0,y:-9.7,z:0})
@@ -26,7 +29,7 @@ let scene = new THREE.Scene();
     function start () {
         app.ui.erase()
         main_menu_ground.visible = false
-        player.create(new THREE.Vector3(0, 2, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, orbit, 'default');
+        player.create(new THREE.Vector3(0, 2, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, pointerlock, 'default');
     }
 // menu
     let ducks = []
@@ -63,7 +66,7 @@ let scene = new THREE.Scene();
         TOD = 35
         main_menu_ground.visible = true
         camera.position.set(0,493,0)
-        if (orbit) orbit.target.copy(camera.position); orbit.update(); camera.position.x+=0.01; //camera.position.y+=30;
+        //if (pointerlock) pointerlock.target.copy(camera.position); pointerlock.update(); camera.position.x+=0.01; //camera.position.y+=30;
         app.ui.text('fishing simulator',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.15},"Cal Sans",'75',0xff0000,25,false)
         app.ui.button('play',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.5},start,"Cal Sans",'25',0xff0000,25)
         app.ui.button('settings',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.65},function(){console.log('settings')},"Cal Sans",'25',0xff0000,25)

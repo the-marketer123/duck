@@ -37,7 +37,7 @@ window.uiCanvas.height = window.innerHeight
 
 ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
 
-//ducks
+// ducks
 app.ducks.list = [] // list of all living ducks
 app.ducks.createdebugDuck = function (scene,pos){
     let duck = app.models.createDuck()
@@ -52,8 +52,8 @@ app.ducks.createdebugDuck = function (scene,pos){
     };
     app.ducks.list.push(object)
     return object
-}
-//user input
+ }
+// user input
 app.user =(function(controls){
                         
     controls.mouseX=controls.mouseY=0
@@ -211,7 +211,7 @@ app.ui.update = function () {
     app.ui.texts.forEach(b=>b.update())
     app.ui.images.forEach(b=>b.update())
  }
-app.ui.back_color = 'none'; // current background color, none means transparent
+app.ui.back_color = 'none'; // background color, none means transparent
 app.ui.texts = [];  //text
 app.ui.buttons = []; //buttons
 app.ui.images = []; //images

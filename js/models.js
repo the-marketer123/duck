@@ -185,10 +185,12 @@ models.createDock = function(
     const dock = new THREE.Group();
     const dockMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
     const dockGeometry = new THREE.BoxGeometry(1, 0.5, length);
-    const dockMesh = new THREE.Mesh(dockGeometry, dockMaterial);
-    dockMesh.position.set(x, y, z);
-    dockMesh.rotation.y = rot;
-    dock.add(dockMesh);
+    for (let i = 0; i < length; i++){
+        const dockMesh = new THREE.Mesh(dockGeometry, dockMaterial);
+        dockMesh.position.set(x + i * 1.1, y, z);
+        dockMesh.rotation.y = rot;
+        dock.add(dockMesh);
+    }
 
     return dock;
 }

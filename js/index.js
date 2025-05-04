@@ -34,20 +34,20 @@ let ducks = []
 function mm_back_setup() { // main menu background setup
     let group = new THREE.Group()
     
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(-3, 498,-9)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(-3, 498, -3)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 3, 498, -3)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 3, 498,-9)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(-3, 491,-9)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(-3, 491, -3)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 3, 491, -3)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 3, 491,-9)));
 
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 4, 498,-6)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -4, 498,-6)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 5, 498,-6)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -5, 498,-6)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -7, 498,-4)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(7, 498,-4)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 4, 491,-6)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -4, 491,-6)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 5, 491,-6)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -5, 491,-6)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -7, 491,-4)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(7, 491,-4)));
 
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 0, 498, -3)));
-    ducks.forEach(b=>b.model.lookAt(0,498,0))
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 0, 491, -3)));
+    ducks.forEach(b=>b.model.lookAt(0,491,0))
 
     let ground_mat = new THREE.MeshStandardMaterial({color:0x009900,side: THREE.DoubleSide})
     let ground_geo = new THREE.PlaneGeometry(1000,1000)
@@ -64,8 +64,8 @@ let main_menu_ground = mm_back_setup()
 function main_menu (){
     TOD = 35
     main_menu_ground.visible = true
-    camera.position.set(0,500,0)
-    if (orbit) orbit.target = camera.position; orbit.update()
+    camera.position.set(0,493,0)
+    if (orbit) orbit.target.copy(camera.position); orbit.update(); orbit.target.x+=1;
     app.ui.text('fishing simulator',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.15},"Cal Sans",'75',0xff0000,25,false)
     app.ui.button('play',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.5},function(){console.log('play')},"Cal Sans",'25',0xff0000,25)
     app.ui.button('settings',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.65},function(){console.log('settings')},"Cal Sans",'25',0xff0000,25)
@@ -74,6 +74,7 @@ function main_menu (){
     app.ui.text('studios',10,{custom:true,mode:'offset',offset:-30},"Cal Sans",'25',0xff0000,25,false)
 }
 main_menu()
+map(scene)
 //nessecary stuff
 window.addEventListener("resize", () => {
     app.ui.recenter();

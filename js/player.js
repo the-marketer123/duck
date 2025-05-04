@@ -73,23 +73,35 @@ const player = {
             this.pitch -= this.deltaPitch || 0;
             this.pitch = Math.max(minPitch, Math.min(maxPitch, this.pitch));
         }
-
         this.deltaYaw = 0;
         this.deltaPitch = 0;
 
-        const cam = this.pointerlock.object;
-        const radius = this.cameraDistance; 
+        if (this.cameraDistance >= 0.5) {
+            this.body.children.forEach(child=>{
+                child.visible = true;
+            })   
+            const cam = this.pointerlock.object;
+            const radius = this.cameraDistance; 
 
-        const offsetX = radius * Math.sin(this.yaw) * Math.cos(this.pitch);
-        const offsetY = radius * Math.sin(this.pitch);
-        const offsetZ = radius * Math.cos(this.yaw) * Math.cos(this.pitch);
+            const offsetX = radius * Math.sin(this.yaw) * Math.cos(this.pitch);
+            const offsetY = radius * Math.sin(this.pitch);
+            const offsetZ = radius * Math.cos(this.yaw) * Math.cos(this.pitch);
 
-        cam.position.set(
-            this.body.position.x + offsetX,
-            this.body.position.y + offsetY, 
-            this.body.position.z + offsetZ
-        );
-        cam.lookAt(this.body.position.x, this.body.position.y, this.body.position.z);
+            cam.position.set(
+                this.body.position.x + offsetX,
+                this.body.position.y + offsetY, 
+                this.body.position.z + offsetZ
+            );
+            cam.lookAt(this.body.position.x, this.body.position.y, this.body.position.z);
+        } else {
+            this.pointerlock.object.position.set(this.body.position.x, this.body.position.y, this.body.position.z);
+
+            this.body.children.forEach(child=>{
+                if (child != this.body.children[0]){
+                    child.visible = false; 
+                }
+            })        
+        }
 
      },
     create:function(pos,rot,scene,world,pointerlock,mesh='default'){

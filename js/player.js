@@ -86,10 +86,10 @@ const player = {
 
         cam.position.set(
             this.body.position.x + offsetX,
-            this.body.position.y + 2 + offsetY, 
+            this.body.position.y + offsetY, 
             this.body.position.z + offsetZ
         );
-        cam.lookAt(this.body.position.x, this.body.position.y + 1.5, this.body.position.z);
+        cam.lookAt(this.body.position.x, this.body.position.y, this.body.position.z);
 
      },
     create:function(pos,rot,scene,world,pointerlock,mesh='default'){
@@ -100,8 +100,8 @@ const player = {
         });
         
         this.cameraDistance = 6;        // Default zoom distance
-        this.minCameraDistance = 2;     // Zoom in limit
-        this.maxCameraDistance = 20;    // Zoom out limit
+        this.minCameraDistance = 0;     // Zoom in limit
+        this.maxCameraDistance = 30;    // Zoom out limit
 
         document.addEventListener('wheel', (e) => {
             if (this.pointerlock.isLocked) {
@@ -126,6 +126,8 @@ const player = {
             let eye_geo = new THREE.BoxGeometry(0.25,0.5,0.25)
 
             let torso = new THREE.Mesh(torso_geo,tan)
+            torso.castShadow = true;
+            torso.receiveShadow = true;    
             this.body.add(torso)
 
             let eye1 = new THREE.Mesh(eye_geo,black)
@@ -154,7 +156,11 @@ const player = {
         this.collider = world.createCollider(colliderDesc, this.physBody);
      },
     reset:function(pos,rot){
-
+        if (physBody == null) return;
+        this.body.position.copy(pos);
+        this.body.quaternion.copy(rot);
+        this.physBody.setTranslation(this.body.position.x, this.body.position.y, this.body.position.z, true);
+        this.physBody.setRotation(this.body.quaternion, true);
      }
 }
 export default player

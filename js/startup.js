@@ -169,50 +169,90 @@ app.rend.createMesh = function (
     mesh.quaternion.copy(rot)
     return mesh
  }
-app.rend.createSky = function (angle,scene,prevsky=undefined) {
-    if (prevsky){
+app.rend.createSky = function (angle, scene, prevsky = undefined) {
+    if (prevsky) {
         scene.remove(prevsky.sky);
         scene.remove(prevsky.dirLight);
         scene.remove(prevsky.hemiLight);
     }
-    const sky = new Sky();
-    sky.scale.setScalar( 450000 );
-    let pi = Math.PI;
-    const phi = angle * pi/180//MathUtils.degToRad( 90 );
-    const theta = 180 * pi/180//MathUtils.degToRad( 180 );
-    const sunPosition = new THREE.Vector3().setFromSphericalCoords( 10, phi, theta );
 
+    const sky = new Sky();
+    sky.scale.setScalar(450000);
+    scene.add(sky);
+
+    const pi = Math.PI;
+    const phi = angle * pi / 180;
+    const theta = pi;
+
+    const sunPosition = new THREE.Vector3().setFromSphericalCoords(10, phi, theta);
     sky.material.uniforms.sunPosition.value = sunPosition;
 
-    scene.add(sky)
+    // Normalize angle to [0, 360)
+    angle = angle % 360;
 
-    const hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2 );
-    hemiLight.color.setHSL( 0.6, 1, 0.6 );
-    hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
-    hemiLight.position.set( 0, 50, 0 );
-    scene.add( hemiLight );
-    
-    const dirLight = new THREE.DirectionalLight( 0xffffff, 3 );
-    dirLight.color.setHSL( 0.1, 1, 0.95 );
-    dirLight.position.set( - 1, 1.75, 1 );
-    dirLight.position.multiplyScalar( 30 );
-    scene.add( dirLight );
+    // Compute daylight factor based on sun elevation
+    // 0 at midnight (angle = 180), 1 at noon (angle = 0)
+    let dayFactor = Math.max(0, Math.cos(phi));
+    dayFactor *= 2;
+    // Create hemisphere light
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1.0);
+    hemiLight.position.set(0, 50, 0);
+    hemiLight.castShadow = true;
+    hemiLight.color.setHSL(0.6, 1, 0.6).multiplyScalar(dayFactor);
+    hemiLight.groundColor.setHSL(0.095, 1, 0.75).multiplyScalar(dayFactor);
+    hemiLight.intensity = 0.4 * dayFactor; // softer than sun
+    scene.add(hemiLight);
 
+    // Create directional light (sun)
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    dirLight.position.set(-1, 1.75, 1).multiplyScalar(30);
+    dirLight.color.setHSL(0.1, 1, 0.95);
+    dirLight.intensity = 1.5 * dayFactor; // strongest light
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
 
-    const d = 50;
+    // Shadow camera setup
+     
+    dirLight.shadow.mapSize.width = 40960;
+    dirLight.shadow.mapSize.height = 40960;
+    
+    const d = 250;
+    dirLight.shadow.camera.left = -d;
+    dirLight.shadow.camera.right = d;
+    dirLight.shadow.camera.top = d;
+    dirLight.shadow.camera.bottom = -d;
+    dirLight.shadow.camera.far = 3500;
+    //dirLight.shadow.bias = -0.0001;
 
-    dirLight.shadow.camera.left =   - d;
-    dirLight.shadow.camera.right =    d;
-    dirLight.shadow.camera.top =      d;
-    dirLight.shadow.camera.bottom = - d;
-    dirLight.shadow.camera.far =   3500;
-    dirLight.shadow.bias =     - 0.0001;
+    scene.add(dirLight);
+    function update(playerPos) {
+        const shadowCam = dirLight.shadow.camera;
+    
+        // Move the light to follow the player (or offset behind)
+        dirLight.position.set(
+            playerPos.x + 50,
+            playerPos.y + 100,
+            playerPos.z + 50
+        );
+    
+        dirLight.target.position.set(playerPos.x, playerPos.y, playerPos.z);
+        dirLight.target.updateMatrixWorld();
+    
+        // Optional: adjust frustum bounds dynamically
+        const range = 50;
+        shadowCam.left = -range;
+        shadowCam.right = range;
+        shadowCam.top = range;
+        shadowCam.bottom = -range;
+        shadowCam.near = 0.01;
+        shadowCam.far = 3500;
+    
+        // Must update projection
+        shadowCam.updateProjectionMatrix();
+    }
 
-    return {sky,dirLight,hemiLight}
- }
+    return { sky, dirLight, hemiLight, update };
+ };
+
 // ui
 app.ui.update = function () {
     ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);

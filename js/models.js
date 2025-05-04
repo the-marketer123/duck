@@ -23,6 +23,8 @@ models.createDuck = function(
     const body2 = new THREE.Mesh(body2Geometry, bodyMaterial);
     body1.position.set(0, 0.5, -0.125);
     body2.position.set(0, 0.5, -0.25);
+    body1.castShadow = true;
+    body2.castShadow = true;
     bodyGroup.add(body1);
     bodyGroup.add(body2);
     

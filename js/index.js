@@ -2,11 +2,11 @@ await window.rapierReady;
 import player from './player.js'
 
 let scene = new THREE.Scene();
-//scene.fog = new THREE.Fog( scene.background, 1, 500 );
+scene.fog = new THREE.Fog( scene.background, 1, 500 );
 
 
 // sky
-    let TOD = 20 // time of day (tod) 
+    let TOD = 90 // time of day (tod) 
     let prevTOD = TOD // just to not constantly create skies
     let skybox = app.rend.createSky(TOD, scene);
 
@@ -14,6 +14,9 @@ let scene = new THREE.Scene();
     let renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight); 
     renderer.setClearColor(0x87ceeb); 
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // or PCFShadowMap
+
     document.body.appendChild(renderer.domElement);
 
 // Camera
@@ -27,6 +30,7 @@ let scene = new THREE.Scene();
     let world = new RAPIER.World({x:0,y:-9.7,z:0})
 // setup
     function start () {
+        pointerlock.lock();
         app.ui.erase()
         main_menu_ground.visible = false
         player.create(new THREE.Vector3(0, 2, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, pointerlock, 'default');
@@ -55,6 +59,8 @@ let scene = new THREE.Scene();
         let ground_geo = new THREE.PlaneGeometry(1000,1000)
         let ground_pos = new THREE.Vector3(0,490,0)
         let ground = app.rend.createMesh(ground_mat,ground_geo,ground_pos);
+        ground.castShadow = false;
+        ground.receiveShadow = true;
         ground.rotation.x = -Math.PI / 2;
         group.add(ground)
         scene.add(group)
@@ -63,7 +69,7 @@ let scene = new THREE.Scene();
     let main_menu_ground = mm_back_setup()
    
     function main_menu (){
-        TOD = 35
+        TOD = 0
         main_menu_ground.visible = true
         camera.position.set(0,493,0)
         //if (pointerlock) pointerlock.target.copy(camera.position); pointerlock.update(); camera.position.x+=0.01; //camera.position.y+=30;
@@ -115,6 +121,7 @@ function draw() {
     }
     prevTOD = TOD
     app.user.update()
+    skybox.update(camera.position)
 }
 draw();
 app.ui.recenter();

@@ -143,7 +143,6 @@ app.phys.addToMesh = function(mesh, world, physics = true) {
 
     let remove = false;
     function update() {
-        console.log(body.translation())
         mesh.position.copy(body.translation());
         mesh.quaternion.copy(body.rotation());
         if (remove) {

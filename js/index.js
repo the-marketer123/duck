@@ -1,4 +1,5 @@
 await window.rapierReady;
+import player from './player.js'
 
 let scene = new THREE.Scene();
 //scene.fog = new THREE.Fog( scene.background, 1, 500 );
@@ -85,8 +86,10 @@ window.addEventListener("resize", () => {
     camera.updateProjectionMatrix();
     renderer.setSize( window.innerWidth, window.innerHeight );
  });
+ player.create(new THREE.Vector3(0, 2, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, orbit, 'default');
 // loop
 function draw() {
+    player.update()
     app.ducks.list.forEach(b=>b.update())
 
     if (app.user.keysHeld.j && ducks.length > 0){

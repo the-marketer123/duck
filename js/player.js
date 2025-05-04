@@ -5,6 +5,11 @@ const player = {
     world:null,
     scene:null,
     grounded:false,
+    pitch:0,
+    yaw:0,
+    walkSpeed:0.1,
+    jumpSpeed:0.2,
+    orbit:null,
     update:function(){
         
         let cosPitch = Math.cos(-this.pitch);
@@ -18,48 +23,53 @@ const player = {
 
         let impulse = { x: 0, y: 0, z: 0 }; // Initialize impulse vector
 
-        let movingX = (user.keysHeld.KeyD || user.keysHeld.KeyA);
-        if (user.keysHeld.KeyD && user.keysHeld.KeyA) movingX = false
-        let movingZ = (user.keysHeld.KeyW || user.keysHeld.KeyS);
-        if (user.keysHeld.KeyW && user.keysHeld.KeyS) movingZ = false
 
-        if (movingX) {
-            if (!movingZ){
-                if (user.keysHeld.KeyD) {
-                    impulse.x += cdir * speed;
-                    impulse.z -= sdir * speed;
-                } 
-                if (user.keysHeld.KeyA) {
-                    impulse.x -= cdir * speed;
-                    impulse.z += sdir * speed;
-                }
-            } else {
-                if (user.keysHeld.KeyD) {
-                    impulse.x += cdir * speed * 2;
-                    impulse.z -= sdir * speed * 2;
-                } 
-                if (user.keysHeld.KeyA) {
-                    impulse.x -= cdir * speed * 2;
-                    impulse.z += sdir * speed * 2;
-                }
-            }
+        if (app.user.keysHeld.d) {
+            impulse.x += cdir * speed;
+            impulse.z -= sdir * speed;
+        } 
+        if (app.user.keysHeld.a) {
+            impulse.x -= cdir * speed;
+            impulse.z += sdir * speed;
         }
-
-        if (movingZ) {
-            if (user.keysHeld.KeyW) {
-                impulse.x -= sdir * speed;
-                impulse.z -= cdir * speed;
-            }
-            if (user.keysHeld.KeyS) {
-                impulse.x += sdir * speed;
-                impulse.z += cdir * speed;
-            }
+        if (app.user.keysHeld.w) {
+            impulse.x -= sdir * speed;
+            impulse.z -= cdir * speed;
         }
+        if (app.user.keysHeld.s) {
+            impulse.x += sdir * speed;
+            impulse.z += cdir * speed;
+        }
+        
+        if (app.user.keysPressed[' ']){
+            this.physBody.setLinvel({x:this.physBody.linvel().x, y:this.jumpSpeed * 50, z:this.physBody.linvel().z}, true);
+        }
+        impulse.x *= 100;
+        impulse.z *= 100;
+        console.log(impulse)
+        this.physBody.setLinvel({x:impulse.x, y:this.physBody.linvel().y, z:impulse.z}, true);
+        this.physBody.setRotation(this.body.quaternion, true);
 
         this.body.position.set(this.physBody.translation().x, this.physBody.translation().y, this.physBody.translation().z);
-        this.body.quaternion.set(this.physBody.rotation().x, this.physBody.rotation().y, this.physBody.rotation().z, this.physBody.rotation().w);
-        },
-    create:function(pos,rot,scene,world,mesh='default'){
+        if (impulse.x != 0 || impulse.z != 0){
+            this.body.lookAt(this.body.position.x + impulse.x, this.body.position.y, this.body.position.z + impulse.z);
+        }
+        this.orbit.target.copy(this.body.position);
+        this.orbit.update();
+
+        let cam = this.orbit.object;
+        
+        let q = cam.quaternion;
+                                
+        let euler = new THREE.Euler();
+        euler.setFromQuaternion(q, 'YXZ');
+        this.yaw = euler.y;  
+        this.pitch = euler.x;  
+     },
+    create:function(pos,rot,scene,world,orbit,mesh='default'){
+        this.scene = scene
+        this.world = world
+        this.orbit = orbit
         if (mesh == 'default'){
             this.body = new THREE.Group()
 
@@ -71,12 +81,12 @@ const player = {
             let eye_geo = new THREE.BoxGeometry(0.5,0.5,0.5)
 
             let torso = new THREE.Mesh(torso_geo,tan)
-            body.add(torso)
+            this.body.add(torso)
 
             let eye1 = new THREE.Mesh(eye_geo,black)
             let eye2 = new THREE.Mesh(eye_geo,black)
-            body.add(eye1)
-            body.add(eye2)
+            this.body.add(eye1)
+            this.body.add(eye2)
 
             torso.position.set(0,0,0);
             eye1.position.set(0.5,1,0.5)
@@ -87,8 +97,10 @@ const player = {
         scene.add(this.body)
         this.body.position.copy(pos);
         this.body.quaternion.copy(rot);
+
+        const size = new THREE.Vector3(2,2.5,2);
         
-        let rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(this.body.x, this.body.y, this.body.z).setCanSleep(true);
+        let rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(this.body.position.x, this.body.position.y, this.body.position.z).setCanSleep(true);
 
         this.physBody = world.createRigidBody(rigidBodyDesc);
         this.physBody.setRotation(this.body.quaternion);

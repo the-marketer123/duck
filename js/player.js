@@ -54,7 +54,6 @@ const player = {
 
         this.body.position.set(this.physBody.translation().x, this.physBody.translation().y, this.physBody.translation().z);
         if (impulse.x != 0 || impulse.z != 0){
-            //this.body.lookAt(this.body.position.x + impulse.x, this.body.position.y, this.body.position.z + impulse.z);
             let targetPosition = new THREE.Vector3(this.body.position.x + impulse.x, this.body.position.y, this.body.position.z + impulse.z);
             const targetDir = new THREE.Vector3().subVectors(targetPosition, this.body.position);
             targetDir.y = 0; 
@@ -69,35 +68,27 @@ const player = {
         const minPitch = -Math.PI / 2 + 0.1;
         const maxPitch = Math.PI / 2 - 0.1;
 
-        this.cameraDistance = 6;        // Default zoom distance
-        this.minCameraDistance = 2;     // Zoom in limit
-        this.maxCameraDistance = 20;    // Zoom out limit
         if (this.pointerlock.isLocked) {
-
             this.yaw += this.deltaYaw || 0;
             this.pitch -= this.deltaPitch || 0;
             this.pitch = Math.max(minPitch, Math.min(maxPitch, this.pitch));
-
-            // Reset deltas
-            this.deltaYaw = 0;
-            this.deltaPitch = 0;
-
-            // Orbit camera around the player
-            const cam = this.pointerlock.object;
-            const radius = this.cameraDistance; // Distance behind the player
-
-            const offsetX = radius * Math.sin(this.yaw) * Math.cos(this.pitch);
-            const offsetY = radius * Math.sin(this.pitch);
-            const offsetZ = radius * Math.cos(this.yaw) * Math.cos(this.pitch);
-
-            cam.position.set(
-                this.body.position.x + offsetX,
-                this.body.position.y + 2 + offsetY, // eye height + pitch
-                this.body.position.z + offsetZ
-            );
         }
 
-        // Always look at the player's upper body
+        this.deltaYaw = 0;
+        this.deltaPitch = 0;
+
+        const cam = this.pointerlock.object;
+        const radius = this.cameraDistance; 
+
+        const offsetX = radius * Math.sin(this.yaw) * Math.cos(this.pitch);
+        const offsetY = radius * Math.sin(this.pitch);
+        const offsetZ = radius * Math.cos(this.yaw) * Math.cos(this.pitch);
+
+        cam.position.set(
+            this.body.position.x + offsetX,
+            this.body.position.y + 2 + offsetY, 
+            this.body.position.z + offsetZ
+        );
         cam.lookAt(this.body.position.x, this.body.position.y + 1.5, this.body.position.z);
 
      },
@@ -113,9 +104,10 @@ const player = {
         this.maxCameraDistance = 20;    // Zoom out limit
 
         document.addEventListener('wheel', (e) => {
-            if (document.pointerLockElement) {
+            if (this.pointerlock.isLocked) {
                 this.cameraDistance += e.deltaY * 0.01; // Adjust sensitivity here
                 this.cameraDistance = Math.max(this.minCameraDistance, Math.min(this.maxCameraDistance, this.cameraDistance));
+
             }
         });
         

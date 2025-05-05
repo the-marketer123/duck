@@ -153,6 +153,7 @@ const player = {
         } else {
             this.body = mesh;
         }
+        app.rend.addShadow(this.body);
         scene.add(this.body)
         this.body.position.copy(pos);
         this.body.quaternion.copy(rot);

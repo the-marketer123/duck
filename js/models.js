@@ -23,8 +23,6 @@ models.createDuck = function(
     const body2 = new THREE.Mesh(body2Geometry, bodyMaterial);
     body1.position.set(0, 0.5, -0.125);
     body2.position.set(0, 0.5, -0.25);
-    body1.castShadow = true;
-    body2.castShadow = true;
     bodyGroup.add(body1);
     bodyGroup.add(body2);
     
@@ -117,6 +115,7 @@ models.createDuck = function(
     const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
     rightFoot.position.set(0.4, -0.7, 0.2);
     rightLimb.add(rightFoot);
+    app.rend.addShadow(duck);
 
     let animation = {
         // Current values to interpolate from
@@ -177,23 +176,86 @@ models.createDuck = function(
 
     return duck;
 }
-models.createDock = function(
+models.createDock = function (
     x,
     y,
     z,
     length = 10,
     rot = Math.PI / 2,
-){
+    world,
+    phys = true
+) {
     const dock = new THREE.Group();
-    const dockMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-    const dockGeometry = new THREE.BoxGeometry(1, 0.5, length);
-    for (let i = 0; i < length; i++){
-        const dockMesh = new THREE.Mesh(dockGeometry, dockMaterial);
-        dockMesh.position.set(x + i * 1.1, y, z);
-        dockMesh.rotation.y = rot;
-        dock.add(dockMesh);
+    const dockGeometry = new THREE.BoxGeometry(10, 0.5, 1);
+    const poleGeometry = new THREE.CylinderGeometry(0.6, 0.6, 30, 32);
+    let poles = [];
+
+    // Create poles
+    for (let i = 0; i <= length / 4; i += length / 8) {
+        const dockMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+        dockMaterial.color.setHex(0x8B4513 + (Math.round(Math.random() * 50) * 0x010101));
+        let dockMesh1 = new THREE.Mesh(poleGeometry, dockMaterial);
+        let dockMesh2 = new THREE.Mesh(poleGeometry, dockMaterial);
+        dockMesh1.position.set(-5.1, -12.5, i * 4 - 0.5);
+        dockMesh2.position.set(5.1, -12.5, i * 4 - 0.5);
+        poles.push(dockMesh1, dockMesh2);
+    }
+
+    poles.forEach(p => dock.add(p));
+
+    // Create planks
+    let planks = [];
+    for (let i = 0; i < length; i++) {
+        const dockMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+        dockMaterial.color.setHex(0x8B4513 + (Math.round(Math.random() * 50) * 0x010101));
+        let dockMesh = new THREE.Mesh(dockGeometry, dockMaterial);
+        dockMesh.position.set(0, Math.random() / 10, i);
+        //dockMesh.rotation.y = rot;
+        planks.push(dockMesh);
+    }
+
+    planks.forEach(p => dock.add(p));
+
+    // Set dock group position and rotation
+    dock.position.set(x, y, z);
+    dock.rotation.y = rot;
+
+    // Physics setup
+    if (phys) {
+        // --- Add one large plank rigid body ---
+        const plankLength = length;
+        const plankSize = { x: 10, y: 0.5, z: plankLength };
+        const halfExtents = { x: plankSize.x / 2, y: plankSize.y / 2, z: plankSize.z / 2 };
+
+        const dockQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, 0));
+        const dockPos = new THREE.Vector3(x, y, z+length/2).applyQuaternion(dockQuat);
+
+        const rbDesc = RAPIER.RigidBodyDesc.fixed()
+            .setTranslation(dockPos.x, dockPos.y, dockPos.z)
+            .setRotation({
+                x: dockQuat.x,
+                y: dockQuat.y,
+                z: dockQuat.z,
+                w: dockQuat.w
+            });
+
+        const rigidBody = world.createRigidBody(rbDesc);
+        const plankCollider = RAPIER.ColliderDesc.cuboid(halfExtents.x, halfExtents.y, halfExtents.z);
+        world.createCollider(plankCollider, rigidBody);
+
+        // --- Add pole rigid bodies ---
+        poles.forEach(pole => {
+            const poleWorldPos = new THREE.Vector3();
+            pole.getWorldPosition(poleWorldPos);
+            const rbPole = world.createRigidBody(
+                RAPIER.RigidBodyDesc.fixed().setTranslation(poleWorldPos.x, poleWorldPos.y, poleWorldPos.z)
+            );
+            const collider = RAPIER.ColliderDesc.cylinder(15, 0.6); // Half-height, radius
+            world.createCollider(collider, rbPole);
+        });
     }
 
     return dock;
-}
+};
+
 export default models;

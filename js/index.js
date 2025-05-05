@@ -4,94 +4,96 @@ import player from './player.js'
 let scene = new THREE.Scene();
 scene.fog = new THREE.Fog( scene.background, 1, 500 );
 
+let TOD = 90 // time of day (tod) 
+let prevTOD = TOD // just to not constantly create skies
+let skybox = app.rend.createSky(TOD, scene);
 
-// sky
-    let TOD = 90 // time of day (tod) 
-    let prevTOD = TOD // just to not constantly create skies
-    let skybox = app.rend.createSky(TOD, scene);
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight); 
+renderer.setClearColor(0x87ceeb); 
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
 
-// Renderer
-    let renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight); 
-    renderer.setClearColor(0x87ceeb); 
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // or PCFShadowMap
+document.body.appendChild(renderer.domElement);
 
-    document.body.appendChild(renderer.domElement);
+let camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.01, 5000);
+let pointerlock = new PointerLockControls(camera, uiCanvas)
+uiCanvas.addEventListener('click', function() {
+    pointerlock.lock();
+});
+scene.add(camera);
 
-// Camera
-    let camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.01, 5000);
-    let pointerlock = new PointerLockControls(camera, uiCanvas)
-    uiCanvas.addEventListener('click', function() {
-        pointerlock.lock();
-    });
-    scene.add(camera);
+let world = new RAPIER.World({x:0,y:-9.7,z:0})
 
-    let world = new RAPIER.World({x:0,y:-9.7,z:0})
+
+let dock = app.models.createDock(0,4,0,20,Math.PI/4,world,true)
+
+scene.add(dock)
 // setup
-    function start () {
-        pointerlock.lock();
-        app.ui.erase()
-        main_menu_ground.visible = false
-        player.create(new THREE.Vector3(0, 2, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, pointerlock, 'default');
-    }
+function start () {
+    pointerlock.lock();
+    app.ui.erase()
+    main_menu_ground.visible = false
+    player.create(new THREE.Vector3(0, 2, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, pointerlock, 'default');
+}
 // menu
-    let ducks = []
-    function mm_back_setup() { // main menu background setup
-        let group = new THREE.Group()
-        
-        ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(-3, 491,-9)));
-        ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(-3, 491, -3)));
-        ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 3, 491, -3)));
-        ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 3, 491,-9)));
+let ducks = []
+function mm_back_setup() { // main menu background setup
+    let group = new THREE.Group()
+    
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(-3, 491,-9)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(-3, 491, -3)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 3, 491, -3)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 3, 491,-9)));
 
-        ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 4, 491,-6)));
-        ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -4, 491,-6)));
-        ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 5, 491,-6)));
-        ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -5, 491,-6)));
-        ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -7, 491,-4)));
-        ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(7, 491,-4)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 4, 491,-6)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -4, 491,-6)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 5, 491,-6)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -5, 491,-6)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -7, 491,-4)));
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(7, 491,-4)));
 
-        ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 0, 491, -3)));
-        ducks.forEach(b=>b.model.lookAt(0,491,0))
+    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 0, 491, -3)));
+    ducks.forEach(b=>b.model.lookAt(0,491,0))
 
-        let ground_mat = new THREE.MeshStandardMaterial({color:0x009900,side: THREE.DoubleSide})
-        let ground_geo = new THREE.PlaneGeometry(1000,1000)
-        let ground_pos = new THREE.Vector3(0,490,0)
-        let ground = app.rend.createMesh(ground_mat,ground_geo,ground_pos);
-        ground.castShadow = false;
-        ground.receiveShadow = true;
-        ground.rotation.x = -Math.PI / 2;
-        group.add(ground)
-        scene.add(group)
-        return group
-    }
-    let main_menu_ground = mm_back_setup()
-   
-    function main_menu (){
-        TOD = 0
-        main_menu_ground.visible = true
-        camera.position.set(0,493,0)
-        //if (pointerlock) pointerlock.target.copy(camera.position); pointerlock.update(); camera.position.x+=0.01; //camera.position.y+=30;
-        app.ui.text('fishing simulator',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.15},"Cal Sans",'75',0xff0000,25,false)
-        app.ui.button('play',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.5},start,"Cal Sans",'25',0xff0000,25)
-        app.ui.button('settings',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.65},function(){console.log('settings')},"Cal Sans",'25',0xff0000,25)
-        app.ui.button('secrets',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.8},function(){console.log('secrets')},"Cal Sans",'25',0xff0000,25)
-        app.ui.image('./gm_logo.png',0,{custom:true,mode:'offset',offset:-95},95,95)
-        app.ui.text('studios',10,{custom:true,mode:'offset',offset:-30},"Cal Sans",'25',0xff0000,25,false)
-    }
-    main_menu()
-    loadMap(scene,world)
+    let ground_mat = new THREE.MeshStandardMaterial({color:0x009900,side: THREE.DoubleSide})
+    let ground_geo = new THREE.PlaneGeometry(1000,1000)
+    let ground_pos = new THREE.Vector3(0,490,0)
+    let ground = app.rend.createMesh(ground_mat,ground_geo,ground_pos);
+    ground.castShadow = false;
+    ground.receiveShadow = true;
+    ground.rotation.x = -Math.PI / 2;
+    group.add(ground)
+    scene.add(group)
+    return group
+}
+let main_menu_ground = mm_back_setup()
+
+function main_menu (){
+    TOD = 0
+    main_menu_ground.visible = true
+    camera.position.set(0,493,0)
+    //if (pointerlock) pointerlock.target.copy(camera.position); pointerlock.update(); camera.position.x+=0.01; //camera.position.y+=30;
+    app.ui.text('fishing simulator',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.15},"Cal Sans",'75',0xff0000,25,false)
+    app.ui.button('play',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.5},start,"Cal Sans",'25',0xff0000,25)
+    app.ui.button('settings',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.65},function(){console.log('settings')},"Cal Sans",'25',0xff0000,25)
+    app.ui.button('secrets',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.8},function(){console.log('secrets')},"Cal Sans",'25',0xff0000,25)
+    app.ui.image('./gm_logo.png',0,{custom:true,mode:'offset',offset:-95},95,95)
+    app.ui.text('studios',10,{custom:true,mode:'offset',offset:-30},"Cal Sans",'25',0xff0000,25,false)
+}
+main_menu()
+loadMap(scene,world)
 //nessecary stuff
-    window.addEventListener("resize", () => {
-        app.ui.recenter();
+window.addEventListener("resize", () => {
+    app.ui.recenter();
 
-        uiCanvas.width = window.innerWidth
-        uiCanvas.height = window.innerHeight
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize( window.innerWidth, window.innerHeight );
-    });
+    uiCanvas.width = window.innerWidth
+    uiCanvas.height = window.innerHeight
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+});
+
 // loop
 function draw() {
     player.update()
@@ -125,4 +127,3 @@ function draw() {
 }
 draw();
 app.ui.recenter();
-

@@ -157,6 +157,42 @@ app.phys.addToMesh = function(mesh, world, physics = true) {
     return { body, remove, collider, update };
  };
 
+app.phys.addREC = function(mesh,world,physics=false){
+    
+    if (mesh.isMesh){
+        let x = mesh.position?.x ?? 0;
+        let y = mesh.position?.y ?? 0;
+        let z = mesh.position?.z ?? 0;
+        let quat = mesh.quaternion;
+        let rapierQuat = [quat.x, quat.y, quat.z, quat.w];
+        let rigidBodyDesc = physics
+            ? RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setCanSleep(true).setRotation(rapierQuat)
+            : RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z).setCanSleep(true).setRotation(rapierQuat);
+
+        let body = world.createRigidBody(rigidBodyDesc);
+        body.setRotation(mesh.quaternion);
+
+        let colliderDesc = RAPIER.ColliderDesc.cuboid(mesh.geometry.parameters.width / 2, mesh.geometry.parameters.height / 2, mesh.geometry.parameters.depth / 2);
+        let collider = world.createCollider(colliderDesc, body);
+
+        let remove = false;
+        function update() {
+            mesh.position.copy(body.translation());
+            mesh.quaternion.copy(body.rotation());
+            if (remove) {
+                world.removeRigidBody(body);
+                app.phys.bodies[num] = undefined;
+            }
+        }
+
+        let num = app.phys.bodies.length;
+        app.phys.bodies.push({ body, remove, collider, update });
+
+    }
+    mesh.children.forEach(child => {
+        app.phys.addREC(child, world, physics);
+    });
+ }
 // rendering
 app.rend.createMesh = function (
     material = new THREE.MeshStandardMaterial( { color: 0xffffff } ),
@@ -197,7 +233,6 @@ app.rend.createSky = function (angle, scene, prevsky = undefined) {
     // Create hemisphere light
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1.0);
     hemiLight.position.set(0, 50, 0);
-    hemiLight.castShadow = true;
     hemiLight.color.setHSL(0.6, 1, 0.6).multiplyScalar(dayFactor);
     hemiLight.groundColor.setHSL(0.095, 1, 0.75).multiplyScalar(dayFactor);
     hemiLight.intensity = 0.4 * dayFactor; // softer than sun
@@ -208,7 +243,6 @@ app.rend.createSky = function (angle, scene, prevsky = undefined) {
     dirLight.position.set(-1, 1.75, 1).multiplyScalar(30);
     dirLight.color.setHSL(0.1, 1, 0.95);
     dirLight.intensity = 1.5 * dayFactor; // strongest light
-    dirLight.castShadow = true;
 
     // Shadow camera setup
      
@@ -253,6 +287,15 @@ app.rend.createSky = function (angle, scene, prevsky = undefined) {
     return { sky, dirLight, hemiLight, update };
  };
 
+app.rend.addShadow = function(obj) {
+    if (obj.isMesh) {
+        obj.castShadow = true;
+        obj. receiveShadow = true;
+    }
+    obj.children.forEach(child => {
+        app.rend.addShadow(child);
+    });
+ }
 // ui
 app.ui.update = function () {
     ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);

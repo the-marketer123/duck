@@ -14,19 +14,27 @@ import map from './map.js'
 import player from './player.js'
 */
 
-window.THREE = await import('three').default;
-window.Water = await import('three/addons/objects/Water.js').Water;
-window.PointerLockControls = await import('three/addons/controls/PointerLockControls.js').PointerLockControls;
-window.OrbitControls = await import('three/addons/controls/OrbitControls.js').OrbitControls;
-window.Sky = await import('three/addons/objects/Sky.js').Sky;
-window.GLTFLoader = await import('three/addons/loaders/GLTFLoader.js').GLTFLoader;
-window.FBXLoader = await import('three/addons/loaders/FBXLoader.js').FBXLoader;
-window.SkeletonUtils = await import('three/addons/utils/SkeletonUtils.js').SkeletonUtils;
-window.models = await import('./models.js').default;
-window.loadMap = await import('./map.js').default;
-window.player = await import('./player.js').default;
+let THREE = await import('three');
+window.THREE = THREE.default
+let Water = await import('three/addons/objects/Water.js');
+window.Water = Water.Water
+let PointerLockControls = await import('three/addons/controls/PointerLockControls.js');
+window.PointerLockControls = PointerLockControls.PointerLockControls
+let OrbitControls = await import('three/addons/controls/OrbitControls.js');
+window.OrbitControls = OrbitControls.OrbitControls
+let Sky = await import('three/addons/objects/Sky.js');
+window.Sky = Sky.Sky
+let GLTFLoader = await import('three/addons/loaders/GLTFLoader.js');
+window.GLTFLoader = GLTFLoader.GLTFLoader
+let FBXLoader = await import('three/addons/loaders/FBXLoader.js');
+window.FBXLoader = FBXLoader.FBXLOader
+let SkeletonUtils = await import('three/addons/utils/SkeletonUtils.js').SkeletonUtils;
+window.SkeletonUtils = SkeletonUtils.SkeletonUtils
+    
+let models = await import('./models.js').default;
+let loadMap = await import('./map.js').default;
+let player = await import('./player.js').default;
 let Stats = await import('three/addons/libs/stats.module.js');
-console.log(Stats.default())
 
 window.app = {
     rend:{},

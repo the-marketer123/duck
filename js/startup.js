@@ -1,6 +1,8 @@
-import * as THREE from 'three';
-import { Water } from 'three/addons/objects/Water.js';
-import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+(async function() {
+/*
+let three = await import('three')
+let water = import('three/addons/objects/Water.js');
+let pointerlock import('three/addons/controls/PointerLockControls.js');
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -10,19 +12,21 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import models from './models.js'
 import map from './map.js'
 import player from './player.js'
+*/
 
-
-window.THREE = THREE;
-window.Water = Water;
-window.PointerLockControls = PointerLockControls;
-window.OrbitControls = OrbitControls;
-window.Sky = Sky;
-window.GLTFLoader = GLTFLoader;
-window.FBXLoader = FBXLoader;
-window.SkeletonUtils = SkeletonUtils;
-window.models = models;
-window.loadMap = map;
-window.player = player
+window.THREE = await import('three').default;
+window.Water = await import('three/addons/objects/Water.js').Water;
+window.PointerLockControls = await import('three/addons/controls/PointerLockControls.js').PointerLockControls;
+window.OrbitControls = await import('three/addons/controls/OrbitControls.js').OrbitControls;
+window.Sky = await import('three/addons/objects/Sky.js').Sky;
+window.GLTFLoader = await import('three/addons/loaders/GLTFLoader.js').GLTFLoader;
+window.FBXLoader = await import('three/addons/loaders/FBXLoader.js').FBXLoader;
+window.SkeletonUtils = await import('three/addons/utils/SkeletonUtils.js').SkeletonUtils;
+window.models = await import('./models.js').default;
+window.loadMap = await import('./map.js').default;
+window.player = await import('./player.js').default;
+let Stats = await import('three/addons/libs/stats.module.js');
+console.log(Stats.default())
 
 window.app = {
     rend:{},
@@ -654,5 +658,5 @@ uiCanvas.addEventListener("click", () => {
 
 
 
-
+})();
 

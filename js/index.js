@@ -1,5 +1,8 @@
+(async function() {
 await window.rapierReady;
-import player from './player.js'
+let playerimp = await import('./player.js')
+let player = playerimp.default
+
 
 let scene = new THREE.Scene();
 scene.fog = new THREE.Fog( scene.background, 1, 500 );
@@ -120,3 +123,4 @@ function draw() {
 }
 draw();
 app.ui.recenter();
+})();

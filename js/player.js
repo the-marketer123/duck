@@ -225,4 +225,5 @@ const player = {
         this.physBody.setRotation(this.body.quaternion, true);
      }
 }
-export default player;
+window.player = player;
+//export default player;

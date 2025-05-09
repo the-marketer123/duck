@@ -1,5 +1,3 @@
-import { SimplexNoise } from 'three/addons/math/SimplexNoise.js';
-import { Reflector } from 'three/addons/objects/Reflector.js';
 
 window.drawCanvas=document.getElementById('draw-canvas')
 window.dw_ctx=drawCanvas.getContext('2d')
@@ -500,5 +498,5 @@ models.createGround = function (
         ground_mat.needsUpdate = true;
     };
 }
-
-export default models;
+window.models = models
+//export default models;

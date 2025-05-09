@@ -1,40 +1,33 @@
 (async function() {
-/*
-let three = await import('three')
-let water = import('three/addons/objects/Water.js');
-let pointerlock import('three/addons/controls/PointerLockControls.js');
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { Sky } from 'three/addons/objects/Sky.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import  Stats  from 'three/addons/libs/stats.module.js'
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
-import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import models from './models.js'
-import map from './map.js'
-import player from './player.js'
-*/
-
-let THREE = await import('three');
-window.THREE = THREE.default
+window.startup = false
+window.THREE = await import('three');
 let Water = await import('three/addons/objects/Water.js');
 window.Water = Water.Water
 let PointerLockControls = await import('three/addons/controls/PointerLockControls.js');
 window.PointerLockControls = PointerLockControls.PointerLockControls
 let OrbitControls = await import('three/addons/controls/OrbitControls.js');
 window.OrbitControls = OrbitControls.OrbitControls
-let Sky = await import('three/addons/objects/Sky.js');
-window.Sky = Sky.Sky
+let sky = await import('three/addons/objects/Sky.js');
+window.Sky = sky.Sky
 let GLTFLoader = await import('three/addons/loaders/GLTFLoader.js');
 window.GLTFLoader = GLTFLoader.GLTFLoader
 let FBXLoader = await import('three/addons/loaders/FBXLoader.js');
 window.FBXLoader = FBXLoader.FBXLOader
-let SkeletonUtils = await import('three/addons/utils/SkeletonUtils.js').SkeletonUtils;
+let SkeletonUtils = await import('three/addons/utils/SkeletonUtils.js');
 window.SkeletonUtils = SkeletonUtils.SkeletonUtils
-    
-let models = await import('./models.js').default;
-let loadMap = await import('./map.js').default;
-let player = await import('./player.js').default;
-let Stats = await import('three/addons/libs/stats.module.js');
+let reflec = await import('three/addons/objects/Reflector.js')
+
+window.Reflector = reflec.Reflector
+/*
+let models1 = await import('./models.js');
+window.models = models1.default
+let loadMap1 = await import('./map.js');
+window.loadMap = loadMap1.default
+let player1 = await import('./player.js');
+window.player = player1.default
+*/
+let stats = await import('three/addons/libs/stats.module.js');
+let Stats = stats.default
 
 window.app = {
     rend:{},
@@ -45,6 +38,7 @@ window.app = {
     user:{},
     canvas:{}
 };
+console.log(app)
 
 window.statsui = new Stats()
 document.body.appendChild(window.statsui.dom)
@@ -665,6 +659,7 @@ uiCanvas.addEventListener("click", () => {
 
 
 
-
+window.startup = true
+console.log('startup')
 })();
 

@@ -1,4 +1,3 @@
-import models from './models.js'
 let map = function(scene,world) {
     models.createGround(scene,world)
     let ponds = []
@@ -16,4 +15,6 @@ let map = function(scene,world) {
     return {update}
 
 }
-export default map
+window.loadMap = map;
+//
+//export default map

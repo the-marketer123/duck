@@ -1,8 +1,8 @@
 (async function() {
-await window.rapierReady;
-let playerimp = await import('./player.js')
-let player = playerimp.default
-
+while (!window.startup || !window.rapierReady) {
+    await new Promise(resolve => setTimeout(resolve, 50));
+}
+console.log('loaded')
 
 let scene = new THREE.Scene();
 scene.fog = new THREE.Fog( scene.background, 1, 500 );

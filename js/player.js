@@ -42,8 +42,12 @@ const player = {
             impulse.x += sdir * speed;
             impulse.z += cdir * speed;
         }
-        
-        if (app.user.keysPressed[' ']){
+        if (this.physBody.linvel().y < 0.01 && this.physBody.linvel().y > -0.01){
+            this.grounded = true;
+        } else {
+            this.grounded = false;
+        }
+        if (app.user.keysPressed[' '] && this.grounded){
             this.physBody.setLinvel({x:this.physBody.linvel().x, y:this.jumpSpeed * 50, z:this.physBody.linvel().z}, true);
         }
         impulse.x *= 100;
@@ -67,7 +71,7 @@ const player = {
         // Clamp pitch to avoid flipping
         const minPitch = -Math.PI / 2 + 0.1;
         const maxPitch = Math.PI / 2 - 0.1;
-
+        
         if (this.pointerlock.isLocked) {
             this.yaw += this.deltaYaw || 0;
             this.pitch -= this.deltaPitch || 0;
@@ -75,33 +79,73 @@ const player = {
         }
         this.deltaYaw = 0;
         this.deltaPitch = 0;
-
-        if (this.cameraDistance >= 0.5) {
-            this.body.children.forEach(child=>{
-                child.visible = true;
-            })   
-            const cam = this.pointerlock.object;
-            const radius = this.cameraDistance; 
-
-            const offsetX = radius * Math.sin(this.yaw) * Math.cos(this.pitch);
-            const offsetY = radius * Math.sin(this.pitch);
-            const offsetZ = radius * Math.cos(this.yaw) * Math.cos(this.pitch);
-
-            cam.position.set(
-                this.body.position.x + offsetX,
-                this.body.position.y + offsetY, 
-                this.body.position.z + offsetZ
-            );
-            cam.lookAt(this.body.position.x, this.body.position.y, this.body.position.z);
-        } else {
-            this.pointerlock.object.position.set(this.body.position.x, this.body.position.y, this.body.position.z);
-
-            this.body.children.forEach(child=>{
-                if (child != this.body.children[0]){
-                    child.visible = false; 
-                }
-            })        
+        
+        // Base radius (desired distance from player)
+        const baseRadius = this.cameraDistance;
+        let radius = baseRadius;
+        
+        // Compute the offset direction for the camera
+        const offsetX = radius * Math.sin(this.yaw) * Math.cos(this.pitch);
+        const offsetY = radius * Math.sin(this.pitch);
+        const offsetZ = radius * Math.cos(this.yaw) * Math.cos(this.pitch);
+        
+        // Origin and target positions
+        const playerPos = new THREE.Vector3(
+            this.body.position.x,
+            this.body.position.y,
+            this.body.position.z
+        );
+        
+        const desiredCamPos = new THREE.Vector3(
+            playerPos.x + offsetX,
+            playerPos.y + offsetY,
+            playerPos.z + offsetZ
+        );
+        
+        // Raycast from player to camera to detect obstruction
+        const raycaster = new THREE.Raycaster(playerPos, desiredCamPos.clone().sub(playerPos).normalize());
+        const maxDistance = baseRadius;
+        const intersects = raycaster.intersectObjects(this.scene.children, true); // adjust this if needed to exclude player, etc.
+        
+        let clipped = false;
+        
+        for (let i = 0; i < intersects.length; i++) {
+            const hit = intersects[i];
+            if (hit.distance < baseRadius && !this.body.children.includes(hit.object)) {
+                //radius = hit.distance - 0.1; // just in front of the hit point
+                clipped = true;
+                break;
+            }
         }
+        
+        if (radius < 0.5) radius = 0.5; // prevent camera from going inside the player
+        
+        if (radius >= 0.5) {
+            this.body.children.forEach(child => {
+                child.visible = true;
+            });
+        
+            const camOffsetX = radius * Math.sin(this.yaw) * Math.cos(this.pitch);
+            const camOffsetY = radius * Math.sin(this.pitch);
+            const camOffsetZ = radius * Math.cos(this.yaw) * Math.cos(this.pitch);
+        
+            this.pointerlock.object.position.set(
+                playerPos.x + camOffsetX,
+                playerPos.y + camOffsetY,
+                playerPos.z + camOffsetZ
+            );
+        
+            this.pointerlock.object.lookAt(playerPos);
+        } else {
+            this.pointerlock.object.position.copy(playerPos);
+        
+            this.body.children.forEach(child => {
+                if (child !== this.body.children[0]) {
+                    child.visible = false;
+                }
+            });
+        }
+        
 
      },
     create:function(pos,rot,scene,world,pointerlock,mesh='default'){
@@ -122,7 +166,6 @@ const player = {
 
             }
         });
-        
 
         this.scene = scene
         this.world = world
@@ -144,16 +187,22 @@ const player = {
 
             let eye1 = new THREE.Mesh(eye_geo,black)
             let eye2 = new THREE.Mesh(eye_geo,black)
+            eye1.userData.id='eye'
+            eye2.userData.id='eye'
             this.body.add(eye1)
             this.body.add(eye2)
 
             torso.position.set(0,0,0);
             eye1.position.set(0.5,0.8,1)
             eye2.position.set(-0.5,0.8,1)
+
+            this.ignore = ['eye'];
         } else {
             this.body = mesh;
+            this.ignore = mesh.ignore;
         }
-        app.rend.addShadow(this.body);
+        console.log(this.ignore)
+        app.rend.addShadow(this.body,this.ignore);
         scene.add(this.body)
         this.body.position.copy(pos);
         this.body.quaternion.copy(rot);

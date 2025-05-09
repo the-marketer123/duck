@@ -1,3 +1,8 @@
+import { SimplexNoise } from 'three/addons/math/SimplexNoise.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+
+window.drawCanvas=document.getElementById('draw-canvas')
+window.dw_ctx=drawCanvas.getContext('2d')
 let models={};
 models.createDuck = function(
     bodycolor=0x6b6232, 
@@ -73,10 +78,12 @@ models.createDuck = function(
     const eyeMaterial = new THREE.MeshStandardMaterial({ color: eyecolor });
     const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
     leftEye.position.set(0.25, 1.85, 1.5);
+    leftEye.userData.id = 'eye'
     headGroup.add(leftEye);
 
     const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
     rightEye.position.set(-0.25, 1.85, 1.5);
+    rightEye.userData.id = 'eye'
     headGroup.add(rightEye);
     
     //Pupils
@@ -84,10 +91,12 @@ models.createDuck = function(
     const pupilMaterial = new THREE.MeshStandardMaterial({ color: pupilcolor });
     const leftpupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
     leftpupil.position.set(0.3, 1.85, 1.6);
+    leftpupil.userData.id = 'eye'
     headGroup.add(leftpupil);
 
     const rightpupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
     rightpupil.position.set(-0.3, 1.85, 1.6);
+    rightpupil.userData.id = 'eye'
     headGroup.add(rightpupil);
 
     // Legs
@@ -115,7 +124,8 @@ models.createDuck = function(
     const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
     rightFoot.position.set(0.4, -0.7, 0.2);
     rightLimb.add(rightFoot);
-    app.rend.addShadow(duck);
+    
+    app.rend.addShadow(duck,['eye']);
 
     let animation = {
         // Current values to interpolate from
@@ -191,13 +201,17 @@ models.createDock = function (
     let poles = [];
 
     // Create poles
-    for (let i = 0; i <= length / 4; i += length / 8) {
+    let numberOfPoles = 0; // Number of poles based on length
+    while (length / numberOfPoles >= 7) {
+        numberOfPoles += 1;
+    }
+    for (let i = 0; i <= numberOfPoles; i += 1) {
         const dockMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
         dockMaterial.color.setHex(0x8B4513 + (Math.round(Math.random() * 50) * 0x010101));
         let dockMesh1 = new THREE.Mesh(poleGeometry, dockMaterial);
         let dockMesh2 = new THREE.Mesh(poleGeometry, dockMaterial);
-        dockMesh1.position.set(-5.1, -12.5, i * 4 - 0.5);
-        dockMesh2.position.set(5.1, -12.5, i * 4 - 0.5);
+        dockMesh1.position.set(-5.1, -12.5, i * (length/numberOfPoles) - 0.5);
+        dockMesh2.position.set(5.1, -12.5, i * (length/numberOfPoles) - 0.5);
         poles.push(dockMesh1, dockMesh2);
     }
 
@@ -210,7 +224,6 @@ models.createDock = function (
         dockMaterial.color.setHex(0x8B4513 + (Math.round(Math.random() * 50) * 0x010101));
         let dockMesh = new THREE.Mesh(dockGeometry, dockMaterial);
         dockMesh.position.set(0, Math.random() / 10, i);
-        //dockMesh.rotation.y = rot;
         planks.push(dockMesh);
     }
 
@@ -254,8 +267,238 @@ models.createDock = function (
             world.createCollider(collider, rbPole);
         });
     }
-
+    app.rend.addShadow(dock);
     return dock;
+}
+
+
+
+let ponds = [];
+models.createPond = function (
+    pos = new THREE.Vector3(0, 5, 0),
+    rot = new THREE.Quaternion(0, 0, 0, 1),
+    width = 10,
+    height = 10,
+    dockLength = width * 2 / 3,
+    waterColor = 0x1e90ff, // Dodger blue
+    rockColor = 0x8B4513 
+) {
+    const pond = new THREE.Group();
+
+    const segments = 50;
+    const waterGeometry = new THREE.PlaneGeometry(width, height, segments, segments);
+
+    // Reflector (mild reflection)
+    const reflector = new Reflector(waterGeometry.clone(), {
+        textureWidth: 512,
+        textureHeight: 512,
+        color: 0x555555,
+        clipBias: 0.003,
+        recursion: 1,
+        side: THREE.DoubleSide,
+        flatShading: true,
+    });
+
+    reflector.material.opacity = 0.2;
+    reflector.material.transparent = true;
+
+    reflector.rotation.x = -Math.PI / 2;
+    reflector.position.copy(pos);
+    reflector.position.y -= 1;
+    reflector.material.transparent = true;
+    reflector.material.opacity = 0.1;
+    pond.add(reflector);
+
+    // Transparent water surface with blue tint
+    const waterMaterial = new THREE.MeshBasicMaterial({
+        color: waterColor,
+        transparent: true,
+        opacity: 0.5,
+        roughness: 0.7,
+        metalness: 0.1,
+        side: THREE.DoubleSide,
+        flatShading: true,
+    });
+
+    const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
+    waterMesh.rotation.x = -Math.PI / 2;
+    waterMesh.position.copy(pos);
+    pond.add(waterMesh);
+
+    // Shared wave animation logic
+    const waveHeight = 0.2;
+    const frequency = 0.5;
+    const startTime = Date.now();
+
+    function update() {
+        const time = (Date.now() - startTime) * 0.001;
+
+        const updateWaves = (geometry) => {
+            const positions = geometry.attributes.position;
+            for (let i = 0; i < positions.count; i++) {
+                const x = positions.getX(i);
+                const y = positions.getY(i);
+                const z = Math.sin(x * frequency + time) * Math.cos(y * frequency + time) * waveHeight;
+                positions.setZ(i, z);
+            }
+            positions.needsUpdate = true;
+            geometry.computeVertexNormals();
+        };
+
+        //updateWaves(reflector.geometry);
+        updateWaves(waterMesh.geometry);
+    }
+    const x = pos.x, z = pos.z, w = width / 2, h = height / 2;
+
+    ponds.push({
+        clippingPlanes : [
+            new THREE.Plane(new THREE.Vector3(1, 0, 0), -(x - w)),
+            new THREE.Plane(new THREE.Vector3(-1, 0, 0), x + w),
+            new THREE.Plane(new THREE.Vector3(0, 0, 1), -(z - h)),
+            new THREE.Plane(new THREE.Vector3(0, 0, -1), z + h)
+        ]
+    });
+    const rockHeight = 2;
+    const rockDepth = 2;
+    const rockWidth = 2;
+    const rockSpacing = 2;
+    let createRockTexture = function () {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext('2d');
+    
+        // Base medium-dark gray
+        ctx.fillStyle = '#555';
+        ctx.fillRect(0, 0, size, size);
+    
+        // Add jagged rectangular blocks
+        for (let i = 0; i < 100; i++) {
+            const x = Math.random() * size;
+            const y = Math.random() * size + 0.25;
+            const w = 8 + Math.random() * 40;
+            const h = 8 + Math.random() * 40;
+            const angle = Math.random() * Math.PI;
+    
+            const gray = 50 + Math.floor(Math.random() * 50);
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.fillStyle = `rgb(${gray},${gray},${gray})`;
+            ctx.fillRect(-w / 2, -h / 2, w, h);
+            ctx.restore();
+        }
+    
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(1, 1);
+        return texture;
+    };
+    const rockTexture = createRockTexture();
+    const rockMaterial = new THREE.MeshStandardMaterial({
+        map: rockTexture,
+        roughness: 1.0,
+        metalness: 0.0
+    });
+
+    // Helper to place a rock
+    function placeRock(x, z) {
+        const rock = new THREE.Mesh(
+            new THREE.BoxGeometry(rockWidth, rockHeight, rockDepth),
+            rockMaterial
+        );
+        rock.position.set(x, pos.y - rockHeight / 2 + 0.2, z);
+        rock.rotation.y = Math.random() * Math.PI * 2;
+        rock.scale.y = 1 + Math.random() * 0.5;
+        pond.add(rock);
+    }
+
+    // Loop over each edge
+    const halfW = width / 2;
+    const halfH = height / 2;
+
+    for (let x = -halfW; x <= halfW; x += rockSpacing) {
+        placeRock(pos.x + x, pos.z - halfH); // front
+        placeRock(pos.x + x, pos.z + halfH); // back
+    }
+    for (let z = -halfH + rockSpacing; z < halfH; z += rockSpacing) {
+        placeRock(pos.x - halfW, pos.z + z); // left
+        placeRock(pos.x + halfW, pos.z + z); // right
+    }
+
+
+
+    pond.update = update;
+    return pond;
 };
+
+
+
+models.createGround = function (
+    scene,
+    world,
+    y=0,
+) {
+    dw_ctx.fillStyle = '#339C33'; // forest green
+    dw_ctx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+
+    // Add random leaf shapes
+    function drawLeaf(x, y, size, angle, color) {
+        dw_ctx.save();
+        dw_ctx.translate(x, y);
+        dw_ctx.rotate(angle);
+
+        dw_ctx.beginPath();
+        dw_ctx.moveTo(0, 0);
+        dw_ctx.quadraticCurveTo(size / 2, -size, size, 0);
+        dw_ctx.quadraticCurveTo(size / 2, size, 0, 0);
+        dw_ctx.closePath();
+
+        dw_ctx.fillStyle = color;
+        dw_ctx.fill();
+        dw_ctx.restore();
+    }
+
+    // Generate several random leaves
+    for (let i = 0; i < 150; i++) {
+        const x = Math.random() * drawCanvas.width;
+        const y = Math.random() * drawCanvas.height;
+        const size = 10 + Math.random() * 15;
+        const angle = Math.random() * Math.PI * 2;
+        const greenShade = 100 + Math.floor(Math.random() * 80);
+        const color = `rgb(0,${greenShade},0)`;
+
+        drawLeaf(x, y, size, angle, color);
+    }
+    let ground_mat = new THREE.MeshLambertMaterial({color:0x00ff00})
+    const data = drawCanvas.toDataURL('image/png');
+    const img = new Image();
+    img.src = data;
+    let ground_geo = new THREE.BoxGeometry( 1000, 1, 1000 )
+    let ground_pos = new THREE.Vector3(0,y,0)
+    let ground = []
+    let array = 8
+    for (let x=0;x<array;x++){
+        for (let y2=0;y2<array;y2++){
+            ground_pos.x = x * 1000 - (array/2 * 1000)
+            ground_pos.z = y2 * 1000 - (array/2 * 1000)
+            ground_pos.y = y
+            let plate = app.rend.createMesh(ground_mat,ground_geo,ground_pos);
+            plate.castShadow = false;
+            plate.receiveShadow = true;
+            app.phys.addToMesh(plate,world,false)
+            ground.push(plate)
+    }}
+    ground.forEach(g=>{scene.add(g)});
+    img.onload = function () {
+        const texture = new THREE.Texture(img);
+        texture.needsUpdate = true;
+        ground_mat.map = texture;
+        ground_mat.map.repeat.set(100, 100);
+        ground_mat.map.wrapT = THREE.RepeatWrapping;
+        ground_mat.map.wrapS = THREE.RepeatWrapping;
+        ground_mat.needsUpdate = true;
+    };
+}
 
 export default models;

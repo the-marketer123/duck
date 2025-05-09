@@ -13,6 +13,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x87ceeb); 
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+renderer.localClippingEnabled = true;
+
 
 document.body.appendChild(renderer.domElement);
 
@@ -26,9 +28,6 @@ scene.add(camera);
 let world = new RAPIER.World({x:0,y:-9.7,z:0})
 
 
-let dock = app.models.createDock(0,4,0,20,Math.PI/4,world,true)
-
-scene.add(dock)
 // setup
 function start () {
     pointerlock.lock();
@@ -56,14 +55,7 @@ function mm_back_setup() { // main menu background setup
     ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 0, 491, -3)));
     ducks.forEach(b=>b.model.lookAt(0,491,0))
 
-    let ground_mat = new THREE.MeshStandardMaterial({color:0x009900,side: THREE.DoubleSide})
-    let ground_geo = new THREE.PlaneGeometry(1000,1000)
-    let ground_pos = new THREE.Vector3(0,490,0)
-    let ground = app.rend.createMesh(ground_mat,ground_geo,ground_pos);
-    ground.castShadow = false;
-    ground.receiveShadow = true;
-    ground.rotation.x = -Math.PI / 2;
-    group.add(ground)
+    models.createGround(group,world,489.7)
     scene.add(group)
     return group
 }
@@ -82,7 +74,7 @@ function main_menu (){
     app.ui.text('studios',10,{custom:true,mode:'offset',offset:-30},"Cal Sans",'25',0xff0000,25,false)
 }
 main_menu()
-loadMap(scene,world)
+let map = loadMap(scene,world)
 //nessecary stuff
 window.addEventListener("resize", () => {
     app.ui.recenter();
@@ -96,6 +88,7 @@ window.addEventListener("resize", () => {
 
 // loop
 function draw() {
+    map.update()
     player.update()
     app.ducks.list.forEach(b=>b.update())
 

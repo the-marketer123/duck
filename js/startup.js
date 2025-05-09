@@ -31,6 +31,7 @@ window.app = {
     models:models,
     ducks:{},
     user:{},
+    canvas:{}
 };
 
 window.statsui = new Stats()
@@ -40,6 +41,12 @@ window.uiCanvas=document.getElementById('ui-canvas')
 window.ui_ctx=uiCanvas.getContext('2d')
 window.uiCanvas.width = window.innerWidth
 window.uiCanvas.height = window.innerHeight
+
+window.drawCanvas=document.getElementById('draw-canvas')
+window.dw_ctx=drawCanvas.getContext('2d')
+drawCanvas.style.display = 'none'
+drawCanvas.width = 500
+drawCanvas.height = 500
 
 ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
 
@@ -194,6 +201,28 @@ app.phys.addREC = function(mesh,world,physics=false){
     });
  }
 // rendering
+app.rend.resize = function(object, scaleX, scaleY, scaleZ, updateUV) {
+    object.scale.set(scaleX, scaleY, scaleZ);
+
+    if (updateUV && object.geometry.attributes.uv && object.geometry.attributes.position) {
+        const geometry = object.geometry;
+        const position = geometry.attributes.position;
+        const uv = geometry.attributes.uv;
+
+        for (let i = 0; i < uv.count; i++) {
+            const x = position.getX(i);
+            const y = position.getY(i);
+            const z = position.getZ(i);
+
+            // Basic planar projection based on object type (e.g., box side logic)
+            // This is arbitrary logic for demonstration:
+            uv.setXY(i, x / scaleX, z / scaleZ);
+        }
+
+        uv.needsUpdate = true;
+        geometry.attributes.uv.needsUpdate = true;
+    }
+ };  
 app.rend.createMesh = function (
     material = new THREE.MeshStandardMaterial( { color: 0xffffff } ),
     geometry = new THREE.BoxGeometry( 1, 1, 1 ),    
@@ -236,6 +265,7 @@ app.rend.createSky = function (angle, scene, prevsky = undefined) {
     hemiLight.color.setHSL(0.6, 1, 0.6).multiplyScalar(dayFactor);
     hemiLight.groundColor.setHSL(0.095, 1, 0.75).multiplyScalar(dayFactor);
     hemiLight.intensity = 0.4 * dayFactor; // softer than sun
+    //hemiLight.castShadow = true;
     scene.add(hemiLight);
 
     // Create directional light (sun)
@@ -243,6 +273,7 @@ app.rend.createSky = function (angle, scene, prevsky = undefined) {
     dirLight.position.set(-1, 1.75, 1).multiplyScalar(30);
     dirLight.color.setHSL(0.1, 1, 0.95);
     dirLight.intensity = 1.5 * dayFactor; // strongest light
+    dirLight.castShadow = true;
 
     // Shadow camera setup
      
@@ -255,45 +286,42 @@ app.rend.createSky = function (angle, scene, prevsky = undefined) {
     dirLight.shadow.camera.top = d;
     dirLight.shadow.camera.bottom = -d;
     dirLight.shadow.camera.far = 3500;
-    //dirLight.shadow.bias = -0.0001;
+
+    const range = 50;
+    const shadowCam = dirLight.shadow.camera;
+    shadowCam.left = -range;
+    shadowCam.right = range;
+    shadowCam.top = range;
+    shadowCam.bottom = -range;
+    shadowCam.near = 0.01;
+    shadowCam.far = 3500;
+
+    // Must update projection
+    shadowCam.updateProjectionMatrix();
 
     scene.add(dirLight);
     function update(playerPos) {
-        const shadowCam = dirLight.shadow.camera;
-    
-        // Move the light to follow the player (or offset behind)
         dirLight.position.set(
             playerPos.x + 50,
             playerPos.y + 100,
             playerPos.z + 50
         );
-    
         dirLight.target.position.set(playerPos.x, playerPos.y, playerPos.z);
         dirLight.target.updateMatrixWorld();
-    
-        // Optional: adjust frustum bounds dynamically
-        const range = 50;
-        shadowCam.left = -range;
-        shadowCam.right = range;
-        shadowCam.top = range;
-        shadowCam.bottom = -range;
-        shadowCam.near = 0.01;
-        shadowCam.far = 3500;
-    
-        // Must update projection
-        shadowCam.updateProjectionMatrix();
     }
 
     return { sky, dirLight, hemiLight, update };
  };
 
-app.rend.addShadow = function(obj) {
+app.rend.addShadow = function(obj,ignore=undefined){
+    if (ignore !== undefined){for (let i of ignore){if (obj.userData.id !== undefined && obj.userData.id == i) return;}}
+
     if (obj.isMesh) {
         obj.castShadow = true;
-        obj. receiveShadow = true;
+        obj.receiveShadow = true;
     }
     obj.children.forEach(child => {
-        app.rend.addShadow(child);
+        app.rend.addShadow(child,ignore);
     });
  }
 // ui

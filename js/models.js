@@ -312,7 +312,7 @@ models.createPond = function (
     const waterMaterial = new THREE.MeshBasicMaterial({
         color: waterColor,
         transparent: true,
-        opacity: 0.75,
+        opacity: 0.6,
         roughness: 0.7,
         metalness: 0.1,
         side: THREE.DoubleSide,
@@ -323,6 +323,10 @@ models.createPond = function (
     waterMesh.rotation.x = -Math.PI / 2;
     waterMesh.position.copy(pos);
     pond.add(waterMesh);
+    waterMesh.position.y -= 0.5;
+    let waterphys = app.phys.addToMesh(waterMesh, world, false, false);
+    waterMesh.position.y += 0.5;
+
 
     // Shared wave animation logic
     const waveHeight = 0.2;

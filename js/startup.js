@@ -130,7 +130,7 @@ app.phys.update = function (world) {
     })
  }
 app.phys.bodies=[]
-app.phys.addToMesh = function(mesh, world, physics = true) {
+app.phys.addToMesh = function(mesh, world, physics = true,doupdate=true) {
     let x = mesh.position?.x ?? 0;
     let y = mesh.position?.y ?? 0;
     let z = mesh.position?.z ?? 0;
@@ -154,11 +154,12 @@ app.phys.addToMesh = function(mesh, world, physics = true) {
 
     let remove = false;
     function update() {
-        mesh.position.copy(body.translation());
-        mesh.quaternion.copy(body.rotation());
-        if (remove) {
-            world.removeRigidBody(body);
-            app.phys.bodies[num] = undefined;
+        if (doupdate === false)return;
+            mesh.position.copy(body.translation());
+            mesh.quaternion.copy(body.rotation());
+            if (remove) {
+                world.removeRigidBody(body);
+                app.phys.bodies[num] = undefined;
         }
     }
 

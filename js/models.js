@@ -273,7 +273,81 @@ models.createDock = function (
     return dock;
 }
 
+models.createNest = function(
+    world,
+    scene,
+    level = 1,
+    pos = new THREE.Vector3(0, 0, 0),
+    facing = new THREE.Vector3(0, 0, 1),
 
+) {
+    let nest = new THREE.Group();
+    nest.position.copy(pos)
+    facing.y = pos.y;
+    nest.lookAt(facing);
+    scene.add(nest);
+    switch (level){
+        case 1:
+            const twigCount = 100;
+            const nestRadius = 1.5;
+            const twigHeightBase = 1.5; 
+            const twigRadius = 0.07;
+            const twigHeightMin = 1;
+            const twigHeightMax = 2;
+            const baseColor = new THREE.Color(0x8b5a2b);
+
+            // Geometry & Material
+            const geometry = new THREE.CylinderGeometry(twigRadius, twigRadius, twigHeightBase, 6);
+            const material = new THREE.MeshStandardMaterial({ vertexColors: true });
+
+            // Create InstancedMesh
+            const instancedMesh = new THREE.InstancedMesh(geometry, material, twigCount);
+            instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+            // Allocate per-instance color
+            const colors = new Float32Array(twigCount * 3);
+            instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
+
+            // Helper for transforms
+            const dummy = new THREE.Object3D();
+
+            for (let i = 0; i < twigCount; i++) {
+                // Random position in ring
+                const angle = Math.random() * Math.PI * 2;
+                const radius = nestRadius * Math.sqrt(Math.random()) + 0.5;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                const y = (Math.random() - 0.5) * 0.75;
+
+                dummy.position.set(x, y, z);
+                dummy.lookAt(0, y, 0);
+                dummy.rotateZ(Math.PI / 2); // Lay twig sideways
+
+                // Random height scaling
+                const scaleY = THREE.MathUtils.lerp(1, 2, Math.random()) / twigHeightBase;
+                dummy.scale.set(1, scaleY, 1);
+
+                dummy.updateMatrix();
+                instancedMesh.setMatrixAt(i, dummy.matrix);
+
+                // Randomized color
+                const r = THREE.MathUtils.clamp(baseColor.r + (Math.random() - 0.5) * 0.1, 0, 1);
+                const g = THREE.MathUtils.clamp(baseColor.g + (Math.random() - 0.5) * 0.1, 0, 1);
+                const b = THREE.MathUtils.clamp(baseColor.b + (Math.random() - 0.5) * 0.1, 0, 1);
+                colors.set([r, g, b], i * 3);
+            }
+
+            // Required to push the color buffer to GPU
+            instancedMesh.instanceColor.needsUpdate = true;
+
+            nest.add(instancedMesh);
+
+            break;
+        case 2:
+            break;
+    }
+
+}
 
 let ponds = [];
 models.createPond = function (

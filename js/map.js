@@ -9,7 +9,7 @@ let map = function(scene,world,eventQueue) {
         return new THREE.MeshStandardMaterial({color:color,side: THREE.DoubleSide})
     }
 
-
+    models.createNest(world,scene,1,new THREE.Vector3(10,3,10))
 
     function update() {
         ponds.forEach(p=>{

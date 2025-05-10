@@ -12,6 +12,8 @@ const player = {
     walkSpeed:0.1,
     jumpSpeed:0.2,
     pointerlock:null,
+    walkspeedBUFF: 1,
+    jumpspeedBUFF: 1,
     update:function(){
         
         if (this.physBody == null) return;
@@ -23,26 +25,27 @@ const player = {
 
         let sdir = sinYaw,
             cdir = -cosYaw,
-            speed = (-this.walkSpeed * (this.grounded ? 1 : 0.85) ) * d;
+            speed = (-this.walkSpeed * (this.grounded ? 1 : 0.85) ) * this.walkspeedBUFF;
 
         let impulse = { x: 0, y: 0, z: 0 }; // Initialize impulse vector
 
         d *= 10000;
+        d = 1;
         if (app.user.keysHeld.d) {
-            impulse.x += cdir * speed * d;
-            impulse.z -= sdir * speed * d;
+            impulse.x += cdir * speed //* d;
+            impulse.z -= sdir * speed //* d;
         } 
         if (app.user.keysHeld.a) {
-            impulse.x -= cdir * speed * d;
-            impulse.z += sdir * speed * d;
+            impulse.x -= cdir * speed //* d;
+            impulse.z += sdir * speed //* d;
         }
         if (app.user.keysHeld.w) {
-            impulse.x -= sdir * speed * d;
-            impulse.z -= cdir * speed * d;
+            impulse.x -= sdir * speed //* d;
+            impulse.z -= cdir * speed //* d;
         }
         if (app.user.keysHeld.s) {
-            impulse.x += sdir * speed * d;
-            impulse.z += cdir * speed * d;
+            impulse.x += sdir * speed //* d;
+            impulse.z += cdir * speed //* d;
         }
         if (this.physBody.linvel().y < 0.01 && this.physBody.linvel().y > -0.01){
             this.grounded = true;
@@ -50,7 +53,7 @@ const player = {
             this.grounded = false;
         }
         if (app.user.keysHeld[' '] && this.grounded){
-            this.physBody.setLinvel({x:this.physBody.linvel().x, y:this.jumpSpeed * 50, z:this.physBody.linvel().z}, true);
+            this.physBody.setLinvel({x:this.physBody.linvel().x, y:this.jumpSpeed * 50 * this.jumpspeedBUFF, z:this.physBody.linvel().z}, true);
         }
         impulse.x *= 100;
         impulse.z *= 100;

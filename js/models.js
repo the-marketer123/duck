@@ -273,6 +273,7 @@ models.createDock = function (
 
 let ponds = [];
 models.createPond = function (
+    world,
     pos = new THREE.Vector3(0, 5, 0),
     rot = new THREE.Quaternion(0, 0, 0, 1),
     width = 10,
@@ -302,7 +303,7 @@ models.createPond = function (
 
     reflector.rotation.x = -Math.PI / 2;
     reflector.position.copy(pos);
-    reflector.position.y -= 1;
+    reflector.position.y -= 0.21;
     reflector.material.transparent = true;
     reflector.material.opacity = 0.1;
     pond.add(reflector);
@@ -311,7 +312,7 @@ models.createPond = function (
     const waterMaterial = new THREE.MeshBasicMaterial({
         color: waterColor,
         transparent: true,
-        opacity: 0.5,
+        opacity: 0.75,
         roughness: 0.7,
         metalness: 0.1,
         side: THREE.DoubleSide,
@@ -345,6 +346,7 @@ models.createPond = function (
 
         //updateWaves(reflector.geometry);
         updateWaves(waterMesh.geometry);
+        updateWaves(reflector.geometry);
     }
     const x = pos.x, z = pos.z, w = width / 2, h = height / 2;
 
@@ -409,6 +411,7 @@ models.createPond = function (
         rock.rotation.y = Math.random() * Math.PI * 2;
         rock.scale.y = 1 + Math.random() * 0.5;
         pond.add(rock);
+        app.phys.addToMesh(rock, world, false);
     }
 
     // Loop over each edge
@@ -423,9 +426,27 @@ models.createPond = function (
         placeRock(pos.x - halfW, pos.z + z); // left
         placeRock(pos.x + halfW, pos.z + z); // right
     }
+        // Physics body (sensor) for the pond surface
+    const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed();
+    const rigidBody = world.createRigidBody(rigidBodyDesc);
 
+    const colliderDesc = RAPIER.ColliderDesc.cuboid(width / 2, 0.1, height / 2)
+        .setTranslation(pos.x, pos.y - 0.9, pos.z) // Slightly under surface
+        .setSensor(true); // Doesn't physically block, but detects overlaps
 
+    const collider = world.createCollider(colliderDesc, rigidBody);
 
+    function collide(eventqueue, func){
+        eventqueue.drainCollisionEvents((handle1, handle2, started) => {
+            const colliderA = physicsWorld.getCollider(handle1);
+            const colliderB = physicsWorld.getCollider(handle2);
+            func();
+        });
+
+    }
+
+    pond.physics = { body: rigidBody, collider };
+    pond.onCollide = collide;
     pond.update = update;
     return pond;
 };

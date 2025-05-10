@@ -112,7 +112,7 @@ const player = {
         for (let i = 0; i < intersects.length; i++) {
             const hit = intersects[i];
             if (hit.distance < baseRadius && !this.body.children.includes(hit.object)) {
-                //radius = hit.distance - 0.1; // just in front of the hit point
+                radius = hit.distance - 0.1; // just in front of the hit point
                 clipped = true;
                 break;
             }
@@ -201,7 +201,6 @@ const player = {
             this.body = mesh;
             this.ignore = mesh.ignore;
         }
-        console.log(this.ignore)
         app.rend.addShadow(this.body,this.ignore);
         scene.add(this.body)
         this.body.position.copy(pos);

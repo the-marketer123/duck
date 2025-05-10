@@ -1,8 +1,10 @@
-let map = function(scene,world) {
+let map = function(scene,world,eventQueue) {
     models.createGround(scene,world)
     let ponds = []
-    ponds.push(models.createPond(new THREE.Vector3(0,2,0),new THREE.Quaternion(0, 0, 0, 1),30,30));
-    ponds.forEach(p=>{console.log(p);scene.add(p)})
+    ponds.push(
+        models.createPond(world, new THREE.Vector3(0,2,0), new THREE.Quaternion(0, 0, 0, 1),30,30)
+    );
+    ponds.forEach(p=>{scene.add(p)})
     function material (color){
         return new THREE.MeshStandardMaterial({color:color,side: THREE.DoubleSide})
     }
@@ -10,7 +12,10 @@ let map = function(scene,world) {
 
 
     function update() {
-        ponds.forEach(p=>p.update())
+        ponds.forEach(p=>{
+            p.update()
+        })
+
     }
     return {update}
 

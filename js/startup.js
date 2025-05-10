@@ -33,12 +33,10 @@ window.app = {
     rend:{},
     phys:{},
     ui:{},
-    models:models,
     ducks:{},
     user:{},
     canvas:{}
 };
-console.log(app)
 
 window.statsui = new Stats()
 document.body.appendChild(window.statsui.dom)
@@ -59,7 +57,7 @@ ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
 // ducks
 app.ducks.list = [] // list of all living ducks
 app.ducks.createdebugDuck = function (scene,pos){
-    let duck = app.models.createDuck()
+    let duck = models.createDuck()
     duck.position.copy(pos)
     scene.add(duck)
     let object = {
@@ -660,6 +658,5 @@ uiCanvas.addEventListener("click", () => {
 
 
 window.startup = true
-console.log('startup')
 })();
 

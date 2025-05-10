@@ -2,7 +2,6 @@
 while (!window.startup || !window.rapierReady) {
     await new Promise(resolve => setTimeout(resolve, 50));
 }
-console.log('loaded')
 
 let scene = new THREE.Scene();
 scene.fog = new THREE.Fog( scene.background, 1, 500 );
@@ -77,7 +76,8 @@ function main_menu (){
     app.ui.text('studios',10,{custom:true,mode:'offset',offset:-30},"Cal Sans",'25',0xff0000,25,false)
 }
 main_menu()
-let map = loadMap(scene,world)
+const eventQueue = new RAPIER.EventQueue(true);
+let map = loadMap(scene,world,eventQueue)
 //nessecary stuff
 window.addEventListener("resize", () => {
     app.ui.recenter();

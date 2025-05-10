@@ -1,4 +1,8 @@
+(async function() {
 
+while (!window.BufferGeometryUtils) {
+    await new Promise(resolve => setTimeout(resolve, 50));
+}
 window.drawCanvas=document.getElementById('draw-canvas')
 window.dw_ctx=drawCanvas.getContext('2d')
 let models={};
@@ -283,24 +287,28 @@ models.createPond = function (
     rockColor = 0x8B4513 
 ) {
     const pond = new THREE.Group();
+    pond.rotation.copy(rot);
 
-    const segments = 50;
+    const segments = 16;
     const waterGeometry = new THREE.PlaneGeometry(width, height, segments, segments);
 
     // Reflector (mild reflection)
     const reflector = new Reflector(waterGeometry.clone(), {
-        textureWidth: 512,
-        textureHeight: 512,
+        textureWidth: 128,
+        textureHeight: 128,
         color: 0x555555,
         clipBias: 0.003,
         recursion: 1,
         side: THREE.DoubleSide,
         flatShading: true,
+        textureWidth:128,
+        textureHeight:128,
     });
 
     reflector.material.opacity = 0.2;
     reflector.material.transparent = true;
 
+    reflector.frustrumCulled = false;
     reflector.rotation.x = -Math.PI / 2;
     reflector.position.copy(pos);
     reflector.position.y -= 0.21;
@@ -312,30 +320,58 @@ models.createPond = function (
     const waterMaterial = new THREE.MeshBasicMaterial({
         color: waterColor,
         transparent: true,
-        opacity: 0.6,
+        opacity: 0.7,
         roughness: 0.7,
         metalness: 0.1,
         side: THREE.DoubleSide,
         flatShading: true,
     });
-
     const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
     waterMesh.rotation.x = -Math.PI / 2;
     waterMesh.position.copy(pos);
+    waterMesh.material.transparent = true;
     pond.add(waterMesh);
     waterMesh.position.y -= 0.5;
     let waterphys = app.phys.addToMesh(waterMesh, world, false, false);
     waterMesh.position.y += 0.5;
 
+    const pondBottom = new THREE.Mesh(
+        new THREE.PlaneGeometry(width, height),
+        new THREE.MeshStandardMaterial({
+            color: waterColor * 2,
+            side: THREE.DoubleSide,
+            roughness: 0.7,
+            metalness: 0.1,
+            flatShading: true,
+        })
+    );
+    pondBottom.rotation.x = -Math.PI / 2;
+    pondBottom.position.copy(pos);
+    pondBottom.position.y -= 0.5;
+    pond.add(pondBottom);
+
+    //reflector.renderOrder = 1;
+    //waterMesh.renderOrder = 2;
 
     // Shared wave animation logic
     const waveHeight = 0.2;
     const frequency = 0.5;
     const startTime = Date.now();
 
-    function update() {
-        const time = (Date.now() - startTime) * 0.001;
+    reflector.castShadow = false;
+    reflector.receiveShadow = false;
+    waterMesh.castShadow = false;
+    waterMesh.receiveShadow = false;
 
+    function update() {
+        if (!player.pointerlock) return;
+        const camPos = player.pointerlock.object.position.clone();
+        const distance = pond.position.distanceTo(camPos);
+        if (distance > 30) {reflector.visible = false; return;} 
+
+        reflector.visible = true;
+
+        const time = (Date.now() - startTime) * 0.001;
         const updateWaves = (geometry) => {
             const positions = geometry.attributes.position;
             for (let i = 0; i < positions.count; i++) {
@@ -348,9 +384,8 @@ models.createPond = function (
             geometry.computeVertexNormals();
         };
 
-        //updateWaves(reflector.geometry);
-        updateWaves(waterMesh.geometry);
         updateWaves(reflector.geometry);
+        updateWaves(waterMesh.geometry);
     }
     const x = pos.x, z = pos.z, w = width / 2, h = height / 2;
 
@@ -376,7 +411,6 @@ models.createPond = function (
         ctx.fillStyle = '#555';
         ctx.fillRect(0, 0, size, size);
     
-        // Add jagged rectangular blocks
         for (let i = 0; i < 100; i++) {
             const x = Math.random() * size;
             const y = Math.random() * size + 0.25;
@@ -484,8 +518,9 @@ models.createGround = function (
 
     // Generate several random leaves
     for (let i = 0; i < 150; i++) {
-        const x = Math.random() * drawCanvas.width;
-        const y = Math.random() * drawCanvas.height;
+        let x = Math.random() * (drawCanvas.width - 20) + 10;
+        let y = Math.random() * (drawCanvas.height - 20) + 10;
+
         const size = 10 + Math.random() * 15;
         const angle = Math.random() * Math.PI * 2;
         const greenShade = 100 + Math.floor(Math.random() * 80);
@@ -493,26 +528,35 @@ models.createGround = function (
 
         drawLeaf(x, y, size, angle, color);
     }
-    let ground_mat = new THREE.MeshLambertMaterial({color:0x00ff00})
     const data = drawCanvas.toDataURL('image/png');
     const img = new Image();
     img.src = data;
-    let ground_geo = new THREE.BoxGeometry( 1000, 1, 1000 )
-    let ground_pos = new THREE.Vector3(0,y,0)
-    let ground = []
+           
+    const geometries = [];
     let array = 8
+    let ground_geo = new THREE.BoxGeometry( 1000, 1, 1000 )
+    let ground_mat = new THREE.MeshLambertMaterial({color:0x00ff00})
+
+
     for (let x=0;x<array;x++){
         for (let y2=0;y2<array;y2++){
-            ground_pos.x = x * 1000 - (array/2 * 1000)
-            ground_pos.z = y2 * 1000 - (array/2 * 1000)
-            ground_pos.y = y
-            let plate = app.rend.createMesh(ground_mat,ground_geo,ground_pos);
-            plate.castShadow = false;
-            plate.receiveShadow = true;
-            app.phys.addToMesh(plate,world,false)
-            ground.push(plate)
-    }}
-    ground.forEach(g=>{scene.add(g)});
+            const geo = ground_geo.clone();
+            geo.translate(
+                x * 1000 - (array / 2 * 1000),
+                y,
+                y2 * 1000 - (array / 2 * 1000)
+            );
+            geometries.push(geo);
+        }
+    }
+    console.log(BufferGeometryUtils)
+    const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries);
+    const mergedGround = new THREE.Mesh(mergedGeometry, ground_mat);
+    mergedGround.receiveShadow = true;
+    scene.add(mergedGround);
+    app.phys.addToMesh(mergedGround,world,false)
+    mergedGround.castShadow = false;
+
     img.onload = function () {
         const texture = new THREE.Texture(img);
         texture.needsUpdate = true;
@@ -524,4 +568,6 @@ models.createGround = function (
     };
 }
 window.models = models
+window.modelsReady = true
+})();
 //export default models;

@@ -16,8 +16,9 @@ window.FBXLoader = FBXLoader.FBXLOader
 let SkeletonUtils = await import('three/addons/utils/SkeletonUtils.js');
 window.SkeletonUtils = SkeletonUtils.SkeletonUtils
 let reflec = await import('three/addons/objects/Reflector.js')
-
 window.Reflector = reflec.Reflector
+window.BufferGeometryUtils = await import('three/addons/utils/BufferGeometryUtils.js');
+
 /*
 let models1 = await import('./models.js');
 window.models = models1.default
@@ -122,7 +123,8 @@ app.user =(function(controls){
  })({})
 // physics
 app.phys.update = function (world) {
-    world.step()
+    let clock = new THREE.Clock();
+    world.step();//clock.getDelta());
     app.phys.bodies.forEach(b=> {
         if (b){
             b.update()

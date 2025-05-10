@@ -13,41 +13,43 @@ const player = {
     jumpSpeed:0.2,
     pointerlock:null,
     update:function(){
+        
         if (this.physBody == null) return;
         let cosPitch = Math.cos(-this.pitch);
         let sinPitch = Math.sin(-this.pitch);
         let cosYaw = Math.cos(-this.yaw);
         let sinYaw = Math.sin(-this.yaw);
+        let d = this.clock.getDelta()
 
         let sdir = sinYaw,
             cdir = -cosYaw,
-            speed = (-this.walkSpeed * (this.grounded ? 1 : 0.85) );
+            speed = (-this.walkSpeed * (this.grounded ? 1 : 0.85) ) * d;
 
         let impulse = { x: 0, y: 0, z: 0 }; // Initialize impulse vector
 
-
+        d *= 10000;
         if (app.user.keysHeld.d) {
-            impulse.x += cdir * speed;
-            impulse.z -= sdir * speed;
+            impulse.x += cdir * speed * d;
+            impulse.z -= sdir * speed * d;
         } 
         if (app.user.keysHeld.a) {
-            impulse.x -= cdir * speed;
-            impulse.z += sdir * speed;
+            impulse.x -= cdir * speed * d;
+            impulse.z += sdir * speed * d;
         }
         if (app.user.keysHeld.w) {
-            impulse.x -= sdir * speed;
-            impulse.z -= cdir * speed;
+            impulse.x -= sdir * speed * d;
+            impulse.z -= cdir * speed * d;
         }
         if (app.user.keysHeld.s) {
-            impulse.x += sdir * speed;
-            impulse.z += cdir * speed;
+            impulse.x += sdir * speed * d;
+            impulse.z += cdir * speed * d;
         }
         if (this.physBody.linvel().y < 0.01 && this.physBody.linvel().y > -0.01){
             this.grounded = true;
         } else {
             this.grounded = false;
         }
-        if (app.user.keysPressed[' '] && this.grounded){
+        if (app.user.keysHeld[' '] && this.grounded){
             this.physBody.setLinvel({x:this.physBody.linvel().x, y:this.jumpSpeed * 50, z:this.physBody.linvel().z}, true);
         }
         impulse.x *= 100;
@@ -105,7 +107,9 @@ const player = {
         // Raycast from player to camera to detect obstruction
         const raycaster = new THREE.Raycaster(playerPos, desiredCamPos.clone().sub(playerPos).normalize());
         const maxDistance = baseRadius;
-        const intersects = raycaster.intersectObjects(this.scene.children, true); // adjust this if needed to exclude player, etc.
+        //this.raycastObjects = this.scene.children.filter(obj => obj.isMesh && obj.name !== "Player");
+        const intersects = raycaster.intersectObjects(this.scene.children, true);
+
         
         let clipped = false;
         
@@ -149,6 +153,7 @@ const player = {
 
      },
     create:function(pos,rot,scene,world,pointerlock,mesh='default'){
+        this.clock = new THREE.Clock();  
 
         document.addEventListener('mousemove', (event) => {
             this.deltaYaw -= event.movementX * 0.002;

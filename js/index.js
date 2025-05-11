@@ -16,6 +16,9 @@ renderer.setClearColor(0x87ceeb);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
 renderer.localClippingEnabled = true;
+renderer.outputEncoding = THREE.LinearEncoding;
+renderer.toneMapping = THREE.NoToneMapping;
+
 
 
 document.body.appendChild(renderer.domElement);
@@ -77,7 +80,7 @@ function main_menu (){
 }
 main_menu()
 const eventQueue = new RAPIER.EventQueue(true);
-let map = loadMap(scene,world,eventQueue)
+let map = loadMap(scene,world,eventQueue,player)
 //nessecary stuff
 window.addEventListener("resize", () => {
     app.ui.recenter();

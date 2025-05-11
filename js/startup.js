@@ -133,9 +133,11 @@ app.phys.update = function (world) {
  }
 app.phys.bodies=[]
 app.phys.addToMesh = function(mesh, world, physics = true,doupdate=true) {
-    let x = mesh.position?.x ?? 0;
-    let y = mesh.position?.y ?? 0;
-    let z = mesh.position?.z ?? 0;
+    let pos = new THREE.Vector3(0,0,0);
+    mesh.getWorldPosition(pos);
+    let x = pos?.x ?? 0;
+    let y = pos?.y ?? 0;
+    let z = pos?.z ?? 0;
     mesh.geometry.computeBoundingBox();
     const box = mesh.geometry.boundingBox;
     const size = new THREE.Vector3();
@@ -207,6 +209,66 @@ app.phys.addREC = function(mesh,world,physics=false){
         app.phys.addREC(child, world, physics);
     });
  }
+app.phys.addToMeshACC = function(mesh, world, physics = true, doupdate = true) {
+    const pos = new THREE.Vector3();
+    mesh.getWorldPosition(pos);
+    const { x, y, z } = pos;
+
+    const quat = mesh.quaternion;
+    const rapierQuat = [quat.x, quat.y, quat.z, quat.w];
+
+    const rigidBodyDesc = physics
+        ? RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setRotation(rapierQuat)
+        : RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z).setRotation(rapierQuat);
+
+    const body = world.createRigidBody(rigidBodyDesc);
+    body.setRotation(mesh.quaternion);
+
+    let geometry = mesh.geometry.clone();
+    geometry = geometry.index ? geometry : THREE.BufferGeometryUtils.mergeVertices(geometry);
+    geometry.computeBoundingBox();
+    geometry.computeVertexNormals();
+
+    // 1. Center geometry (Rapier expects it around origin)
+    const center = new THREE.Vector3();
+    geometry.boundingBox.getCenter(center);
+    geometry.translate(-center.x, -center.y, -center.z);
+
+    // 2. Extract vertices and indices
+    const vertices = Array.from(geometry.attributes.position.array);
+    const indices = geometry.index ? Array.from(geometry.index.array) : null;
+
+    if (!indices) {
+    throw new Error("Geometry must have indices to build a trimesh collider.");
+    }
+
+    // 3. Build collider, then offset it back to match mesh visually
+    const colliderDesc = RAPIER.ColliderDesc.trimesh(
+    Float32Array.from(vertices),
+    Uint32Array.from(indices)
+    ).setTranslation(center.x,center.y,center.z); // 👈 This puts the collider where the mesh "was" before centering
+
+
+
+    console.log(colliderDesc)
+    const collider = world.createCollider(colliderDesc, body);
+
+    let remove = false;
+    function update() {
+        if (!doupdate) return;
+        mesh.position.copy(body.translation());
+        mesh.quaternion.copy(body.rotation());
+        if (remove) {
+            world.removeRigidBody(body);
+            app.phys.bodies[num] = undefined;
+        }
+    }
+
+    const num = app.phys.bodies.length;
+    app.phys.bodies.push({ body, remove, collider, update });
+
+    return { body, remove, collider, update };
+};
 // rendering
 app.rend.resize = function(object, scaleX, scaleY, scaleZ, updateUV) {
     object.scale.set(scaleX, scaleY, scaleZ);

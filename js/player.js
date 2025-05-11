@@ -1,9 +1,9 @@
 const player = {
-    body:null,
-    physBody:null,
-    collider:null,
-    world:null,
-    scene:null,
+    body:undefined,
+    physBody:undefined,
+    collider:undefined,
+    world:undefined,
+    scene:undefined,
     grounded:false,
     pitch:0,
     yaw:0,
@@ -11,12 +11,12 @@ const player = {
     deltaPitch:0,
     walkSpeed:0.1,
     jumpSpeed:0.2,
-    pointerlock:null,
+    pointerlock:undefined,
     walkspeedBUFF: 1,
     jumpspeedBUFF: 1,
     update:function(){
         
-        if (this.physBody == null) return;
+        if (this.physBody == undefined) return;
         let cosPitch = Math.cos(-this.pitch);
         let sinPitch = Math.sin(-this.pitch);
         let cosYaw = Math.cos(-this.yaw);
@@ -57,7 +57,7 @@ const player = {
         }
         impulse.x *= 100;
         impulse.z *= 100;
-
+        //console.log(impulse.x + '  ' + impulse.z)
         this.physBody.setLinvel({x:impulse.x, y:this.physBody.linvel().y, z:impulse.z}, true);
         this.physBody.setRotation(this.body.quaternion, true);
 
@@ -119,7 +119,7 @@ const player = {
         for (let i = 0; i < intersects.length; i++) {
             const hit = intersects[i];
             if (hit.distance < baseRadius && !this.body.children.includes(hit.object)) {
-                radius = hit.distance - 0.1; // just in front of the hit point
+                //radius = hit.distance - 0.1; // just in front of the hit point
                 clipped = true;
                 break;
             }
@@ -225,7 +225,7 @@ const player = {
         this.collider = world.createCollider(colliderDesc, this.physBody);
      },
     reset:function(pos,rot){
-        if (physBody == null) return;
+        if (physBody == undefined) return;
         this.body.position.copy(pos);
         this.body.quaternion.copy(rot);
         this.physBody.setTranslation(this.body.position.x, this.body.position.y, this.body.position.z, true);

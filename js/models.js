@@ -273,6 +273,137 @@ models.createDock = function (
     return dock;
 }
 
+models.createCurvedWall = function({
+    innerRadius = 1,
+    outerRadius = 2,
+    angleStart = -Math.PI / 2,
+    angleEnd = Math.PI / 2,
+    segments = 32,
+    minHeight = 0.2,
+    maxHeight = 1.5,
+    wallDepth = 1.0
+} = {}) {
+    const geometry = new THREE.BufferGeometry();
+    const positions = [];
+    const indices = [];
+
+    const topOuter = [], topInner = [], bottomOuter = [], bottomInner = [];
+
+    // Loop through the segments and create vertices
+    for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const angle = THREE.MathUtils.lerp(angleStart, angleEnd, t);
+        const centerBias = 1 - Math.abs(t - 0.5) * 2;
+        const height = THREE.MathUtils.lerp(minHeight, maxHeight, centerBias);
+        const yTop = height;
+        const yBottom = height - wallDepth;
+
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+
+        // Top outer
+        topOuter.push(positions.length / 3);
+        positions.push(cos * outerRadius, yTop, sin * outerRadius);
+
+        // Top inner
+        topInner.push(positions.length / 3);
+        positions.push(cos * innerRadius, yTop, sin * innerRadius);
+
+        // Bottom outer
+        bottomOuter.push(positions.length / 3);
+        positions.push(cos * outerRadius, yBottom, sin * outerRadius);
+
+        // Bottom inner
+        bottomInner.push(positions.length / 3);
+        positions.push(cos * innerRadius, yBottom, sin * innerRadius);
+    }
+
+    // Connect side quads between top and bottom
+    for (let i = 0; i < segments; i++) {
+        // Outer wall
+        indices.push(
+            topOuter[i], topOuter[i + 1], bottomOuter[i + 1],
+            topOuter[i], bottomOuter[i + 1], bottomOuter[i]
+        );
+
+        // Inner wall
+        indices.push(
+            topInner[i + 1], topInner[i], bottomInner[i],
+            topInner[i + 1], bottomInner[i], bottomInner[i + 1]
+        );
+
+        // Front wall (top face between outer/inner)
+        indices.push(
+            topOuter[i], topInner[i], topInner[i + 1],
+            topOuter[i], topInner[i + 1], topOuter[i + 1]
+        );
+
+        // Back wall (bottom face between outer/inner)
+        indices.push(
+            bottomOuter[i + 1], bottomInner[i + 1], bottomInner[i],
+            bottomOuter[i + 1], bottomInner[i], bottomOuter[i]
+        );
+    }
+
+    // Add caps for the start (angleStart) and end (angleEnd)
+    const addCap = (angle, radiusOuter, radiusInner, heightTop, heightBottom) => {
+        const top = new THREE.Vector3(Math.cos(angle) * radiusOuter, -heightTop, Math.sin(angle) * radiusOuter);
+        const topInnerCap = new THREE.Vector3(Math.cos(angle) * radiusInner, -heightTop, Math.sin(angle) * radiusInner);
+        const bottom = new THREE.Vector3(Math.cos(angle) * radiusOuter, heightBottom, Math.sin(angle) * radiusOuter);
+        const bottomInnerCap = new THREE.Vector3(Math.cos(angle) * radiusInner, heightBottom, Math.sin(angle) * radiusInner);
+
+        positions.push(top.x, top.y, top.z);
+        positions.push(topInnerCap.x, topInnerCap.y, topInnerCap.z);
+        positions.push(bottom.x, bottom.y, bottom.z);
+        positions.push(bottomInnerCap.x, bottomInnerCap.y, bottomInnerCap.z);
+
+        const idx = positions.length / 3 - 4;
+        indices.push(
+            idx, idx + 1, idx + 2,
+            idx + 2, idx + 1, idx + 3
+        );
+    };
+
+    // Add the start cap at angleStart
+    addCap(angleStart, outerRadius, innerRadius, maxHeight, minHeight);
+
+    // Add the end cap at angleEnd
+    addCap(angleEnd, outerRadius, innerRadius, maxHeight, minHeight);
+
+    // Set the positions and indices for the geometry
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xffaa55,
+        side: THREE.DoubleSide,
+        flatShading: true
+    });
+
+    return new THREE.Mesh(geometry, material);
+};
+
+
+
+models.createBase = function(player){
+    let base = new THREE.Group();
+    base.position.set(0,0,0)
+    const semicircle = models.createCurvedWall({
+        innerRadius: 50,
+        outerRadius: 51,
+        minHeight: 3,
+        maxHeight: 15,
+        wallDepth:30,
+    });
+    semicircle.position.set(50,10,0)
+    base.add(semicircle);
+    app.phys.addToMeshACC(semicircle,player.world,false,false)
+    player.scene.add(base)
+
+
+}
+
 models.createNest = function(
     world,
     scene,
@@ -288,31 +419,62 @@ models.createNest = function(
     scene.add(nest);
     switch (level){
         case 1:
-            const twigCount = 100;
+            const twigCount = 500;
             const nestRadius = 1.5;
-            const twigHeightBase = 1.5; 
+            const twigHeightBase = 1.5;
             const twigRadius = 0.07;
-            const twigHeightMin = 1;
-            const twigHeightMax = 2;
             const baseColor = new THREE.Color(0x8b5a2b);
 
-            // Geometry & Material
             const geometry = new THREE.CylinderGeometry(twigRadius, twigRadius, twigHeightBase, 6);
-            const material = new THREE.MeshStandardMaterial({ vertexColors: true });
+            const colors = new Float32Array(twigCount * 3);
+            const colorAttr = new THREE.InstancedBufferAttribute(colors, 3);
+            geometry.setAttribute('instanceColor', colorAttr); // ✅ critical line
 
-            // Create InstancedMesh
+            const material = new THREE.MeshStandardMaterial({ vertexColors: true });
+            material.onBeforeCompile = (shader) => {
+                shader.vertexShader = shader.vertexShader.replace(
+                    '#include <common>',
+                    `
+                    #include <common>
+                    attribute vec3 instanceColor;
+                    varying vec3 vInstanceColor;
+                    `
+                );
+
+                shader.vertexShader = shader.vertexShader.replace(
+                    '#include <begin_vertex>',
+                    `
+                    #include <begin_vertex>
+                    vInstanceColor = instanceColor;
+                    `
+                );
+
+                shader.fragmentShader = shader.fragmentShader.replace(
+                    '#include <common>',
+                    `
+                    #include <common>
+                    varying vec3 vInstanceColor;
+                    `
+                );
+
+                shader.fragmentShader = shader.fragmentShader.replace(
+                    '#include <color_fragment>',
+                    `
+                    #include <color_fragment>
+                    diffuseColor.rgb = vInstanceColor;
+                    `
+                );
+            };
+
             const instancedMesh = new THREE.InstancedMesh(geometry, material, twigCount);
+
             instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 
-            // Allocate per-instance color
-            const colors = new Float32Array(twigCount * 3);
-            instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
-
-            // Helper for transforms
+            // Dummy for transforms
             const dummy = new THREE.Object3D();
 
             for (let i = 0; i < twigCount; i++) {
-                // Random position in ring
+                // Position
                 const angle = Math.random() * Math.PI * 2;
                 const radius = nestRadius * Math.sqrt(Math.random()) + 0.5;
                 const x = Math.cos(angle) * radius;
@@ -321,26 +483,32 @@ models.createNest = function(
 
                 dummy.position.set(x, y, z);
                 dummy.lookAt(0, y, 0);
-                dummy.rotateZ(Math.PI / 2); // Lay twig sideways
+                dummy.rotateZ(Math.PI / 2);
 
-                // Random height scaling
                 const scaleY = THREE.MathUtils.lerp(1, 2, Math.random()) / twigHeightBase;
                 dummy.scale.set(1, scaleY, 1);
 
                 dummy.updateMatrix();
                 instancedMesh.setMatrixAt(i, dummy.matrix);
 
-                // Randomized color
-                const r = THREE.MathUtils.clamp(baseColor.r + (Math.random() - 0.5) * 0.1, 0, 1);
-                const g = THREE.MathUtils.clamp(baseColor.g + (Math.random() - 0.5) * 0.1, 0, 1);
-                const b = THREE.MathUtils.clamp(baseColor.b + (Math.random() - 0.5) * 0.1, 0, 1);
-                colors.set([r, g, b], i * 3);
+                // Color variation
+                const r = THREE.MathUtils.clamp(baseColor.r + (Math.random() - 0.5) * 0.05, 0, 1);
+                const g = THREE.MathUtils.clamp(baseColor.g + (Math.random() - 0.5) * 0.05, 0, 1);
+                const b = THREE.MathUtils.clamp(baseColor.b + (Math.random() - 0.5) * 0.05, 0, 1);
+                colorAttr.setXYZ(i, r, g, b); // I, R, G, B 
             }
+            colorAttr.needsUpdate = true; 
 
-            // Required to push the color buffer to GPU
-            instancedMesh.instanceColor.needsUpdate = true;
-
+            let physmesh = new THREE.Mesh(
+                new THREE.BoxGeometry(3.75, 1.25, 3.75),
+                new THREE.MeshBasicMaterial()
+            )
+            physmesh.visible = false;
+            nest.add(physmesh)
             nest.add(instancedMesh);
+
+            app.phys.addToMesh(physmesh,world,false,false)
+
 
             break;
         case 2:

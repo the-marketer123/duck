@@ -10,7 +10,12 @@ let map = function(scene,world,eventQueue,player) {
     }
 
     models.createNest(world,scene,1,new THREE.Vector3(10,3,10))
-    //models.createBase(player)
+    models.createCircle(scene,world,true,new THREE.Vector3(50,50,0),0x4444ff,15)
+    models.createCircle(scene,world,true,new THREE.Vector3(50,20,0),0xffffff,12)
+    
+
+
+
     let base_loaded = false
     function update() {
         ponds.forEach(p=>{

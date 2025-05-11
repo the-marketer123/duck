@@ -384,6 +384,14 @@ models.createCurvedWall = function({
     return new THREE.Mesh(geometry, material);
 };
 
+models.createCircle = function (scene,world,phys=false,pos=new THREE.Vector3(0,0,0),color=0x0000ff,radius=5,height=1){
+    const geometry = new THREE.CylinderGeometry(radius,radius,height,64);
+    const material = new THREE.MeshStandardMaterial({color:color});
+    const circle = new THREE.Mesh(geometry,material);
+    circle.position.copy(pos)
+    //app.phys.addToMeshACC(circle,world)
+    scene.add(circle)
+}
 
 
 models.createBase = function(player){
@@ -398,7 +406,7 @@ models.createBase = function(player){
     });
     semicircle.position.set(50,10,0)
     base.add(semicircle);
-    app.phys.addToMeshACC(semicircle,player.world,false,false)
+    app.phys.addToMeshACC(semicircle,player.world,false)
     player.scene.add(base)
 
 
@@ -574,7 +582,7 @@ models.createPond = function (
     waterMesh.material.transparent = true;
     pond.add(waterMesh);
     waterMesh.position.y -= 0.5;
-    let waterphys = app.phys.addToMesh(waterMesh, world, false, false);
+    //let waterphys = app.phys.addToMesh(waterMesh, world, false, false);
     waterMesh.position.y += 0.5;
 
     const pondBottom = new THREE.Mesh(
@@ -785,18 +793,17 @@ models.createGround = function (
             const geo = ground_geo.clone();
             geo.translate(
                 x * 1000 - (array / 2 * 1000),
-                y,
+                0,
                 y2 * 1000 - (array / 2 * 1000)
             );
             geometries.push(geo);
         }
     }
-    console.log(BufferGeometryUtils)
     const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries);
     const mergedGround = new THREE.Mesh(mergedGeometry, ground_mat);
+    mergedGround.position.set(0, y, 0);
     mergedGround.receiveShadow = true;
     scene.add(mergedGround);
-    app.phys.addToMesh(mergedGround,world,false)
     mergedGround.castShadow = false;
 
     img.onload = function () {
@@ -808,6 +815,7 @@ models.createGround = function (
         ground_mat.map.wrapS = THREE.RepeatWrapping;
         ground_mat.needsUpdate = true;
     };
+    app.phys.addToMesh(mergedGround,world,false)
 }
 window.models = models
 window.modelsReady = true

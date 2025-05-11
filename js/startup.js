@@ -138,6 +138,7 @@ app.phys.addToMesh = function(mesh, world, physics = true,doupdate=true) {
     let x = pos?.x ?? 0;
     let y = pos?.y ?? 0;
     let z = pos?.z ?? 0;
+    if (x===0&&y===489.7&&z===0){console.log('hi')}
     mesh.geometry.computeBoundingBox();
     const box = mesh.geometry.boundingBox;
     const size = new THREE.Vector3();
@@ -151,14 +152,16 @@ app.phys.addToMesh = function(mesh, world, physics = true,doupdate=true) {
         : RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z).setCanSleep(true).setRotation(rapierQuat);
 
     let body = world.createRigidBody(rigidBodyDesc);
+    if (x===0&&y===489.7&&z===0){console.log(body.translation().x,body.translation().y,body.translation().z)}
     body.setRotation(mesh.quaternion);
 
     let colliderDesc = RAPIER.ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2);
     let collider = world.createCollider(colliderDesc, body);
+    if (x===0&&y===489.7&&z===0){console.log(body.translation().x,body.translation().y,body.translation().z)}
 
     let remove = false;
     function update() {
-        if (doupdate === false)return;
+        //if (doupdate === false)return;
             mesh.position.copy(body.translation());
             mesh.quaternion.copy(body.rotation());
             if (remove) {
@@ -250,12 +253,11 @@ app.phys.addToMeshACC = function(mesh, world, physics = true, doupdate = true) {
 
 
 
-    console.log(colliderDesc)
     const collider = world.createCollider(colliderDesc, body);
 
     let remove = false;
     function update() {
-        if (!doupdate) return;
+        //if (!doupdate) return;
         mesh.position.copy(body.translation());
         mesh.quaternion.copy(body.rotation());
         if (remove) {
@@ -266,7 +268,7 @@ app.phys.addToMeshACC = function(mesh, world, physics = true, doupdate = true) {
 
     const num = app.phys.bodies.length;
     app.phys.bodies.push({ body, remove, collider, update });
-
+    //body.setTranslation(pos.x,pos.y,pos.z, true);
     return { body, remove, collider, update };
 };
 // rendering

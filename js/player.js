@@ -57,7 +57,6 @@ const player = {
         }
         impulse.x *= 100;
         impulse.z *= 100;
-        //console.log(impulse.x + '  ' + impulse.z)
         this.physBody.setLinvel({x:impulse.x, y:this.physBody.linvel().y, z:impulse.z}, true);
         this.physBody.setRotation(this.body.quaternion, true);
 

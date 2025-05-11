@@ -398,7 +398,7 @@ models.createCircle = function (
     const circle = new THREE.Mesh(geometry,material);
     circle.position.copy(pos)
     scene.add(circle)
-    if (phys) {app.phys.addToMeshACC(circle,world)}
+    if (world) {app.phys.addToMeshACC(circle,world,phys)}
 }
 models.createCube = function (
     scene,
@@ -415,7 +415,7 @@ models.createCube = function (
     const cube = new THREE.Mesh(geometry,material);
     cube.position.copy(pos)
     scene.add(cube)
-    if (phys) {app.phys.addToMeshACC(cube,world)}
+    if (world) {app.phys.addToMeshACC(cube,world,phys)}
 }
 
 models.createBase = function(

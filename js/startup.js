@@ -132,13 +132,12 @@ app.phys.update = function (world) {
     })
  }
 app.phys.bodies=[]
-app.phys.addToMesh = function(mesh, world, physics = true,doupdate=true) {
+app.phys.addToMesh = function(mesh, world, physics = true) {
     let pos = new THREE.Vector3(0,0,0);
     mesh.getWorldPosition(pos);
     let x = pos?.x ?? 0;
     let y = pos?.y ?? 0;
     let z = pos?.z ?? 0;
-    if (x===0&&y===489.7&&z===0){console.log('hi')}
     mesh.geometry.computeBoundingBox();
     const box = mesh.geometry.boundingBox;
     const size = new THREE.Vector3();
@@ -152,12 +151,10 @@ app.phys.addToMesh = function(mesh, world, physics = true,doupdate=true) {
         : RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z).setCanSleep(true).setRotation(rapierQuat);
 
     let body = world.createRigidBody(rigidBodyDesc);
-    if (x===0&&y===489.7&&z===0){console.log(body.translation().x,body.translation().y,body.translation().z)}
     body.setRotation(mesh.quaternion);
 
     let colliderDesc = RAPIER.ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2);
     let collider = world.createCollider(colliderDesc, body);
-    if (x===0&&y===489.7&&z===0){console.log(body.translation().x,body.translation().y,body.translation().z)}
 
     let remove = false;
     function update() {
@@ -212,7 +209,7 @@ app.phys.addREC = function(mesh,world,physics=false){
         app.phys.addREC(child, world, physics);
     });
  }
-app.phys.addToMeshACC = function(mesh, world, physics = true, doupdate = true) {
+app.phys.addToMeshACC = function(mesh, world, physics = true) {
     const pos = new THREE.Vector3();
     mesh.getWorldPosition(pos);
     const { x, y, z } = pos;

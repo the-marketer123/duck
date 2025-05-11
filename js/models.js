@@ -384,17 +384,43 @@ models.createCurvedWall = function({
     return new THREE.Mesh(geometry, material);
 };
 
-models.createCircle = function (scene,world,phys=false,pos=new THREE.Vector3(0,0,0),color=0x0000ff,radius=5,height=1){
+models.createCircle = function (
+    scene,
+    world,
+    phys=false,
+    pos=new THREE.Vector3(0,0,0),
+    color=0x0000ff,
+    radius=5,
+    height=1
+){
     const geometry = new THREE.CylinderGeometry(radius,radius,height,64);
     const material = new THREE.MeshStandardMaterial({color:color});
     const circle = new THREE.Mesh(geometry,material);
     circle.position.copy(pos)
-    //app.phys.addToMeshACC(circle,world)
     scene.add(circle)
+    if (phys) {app.phys.addToMeshACC(circle,world)}
+}
+models.createCube = function (
+    scene,
+    world,
+    phys=false,
+    pos=new THREE.Vector3(0,0,0),
+    color=0x0000ff,
+    width=5,
+    length=5,
+    height=5,
+){
+    const geometry = new THREE.BoxGeometry(width,length,height);
+    const material = new THREE.MeshStandardMaterial({color:color});
+    const cube = new THREE.Mesh(geometry,material);
+    cube.position.copy(pos)
+    scene.add(cube)
+    if (phys) {app.phys.addToMeshACC(cube,world)}
 }
 
-
-models.createBase = function(player){
+models.createBase = function(
+    player
+){
     let base = new THREE.Group();
     base.position.set(0,0,0)
     const semicircle = models.createCurvedWall({

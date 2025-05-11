@@ -58,7 +58,7 @@ const player = {
         impulse.x *= 100;
         impulse.z *= 100;
         this.physBody.setLinvel({x:impulse.x, y:this.physBody.linvel().y, z:impulse.z}, true);
-        this.physBody.setRotation(this.body.quaternion, true);
+        this.physBody.setRotation(this.body.quaternion, true);  
 
         this.body.position.set(this.physBody.translation().x, this.physBody.translation().y, this.physBody.translation().z);
         if (impulse.x != 0 || impulse.z != 0){
@@ -216,7 +216,7 @@ const player = {
         const size = new THREE.Vector3(2,2.5,2);
         
         let rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(this.body.position.x, this.body.position.y, this.body.position.z).setCanSleep(true);
-
+        //rigidBodyDesc.mass = 500
         this.physBody = world.createRigidBody(rigidBodyDesc);
         this.physBody.setRotation(this.body.quaternion);
 

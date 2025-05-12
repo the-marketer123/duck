@@ -438,15 +438,15 @@ models.createBase = function(
     player.scene.add(base)
 
     
-    models.createCircle(player.scene,world,false,new THREE.Vector3(50,0.1,0),0x4444ff,15)
-    models.createCircle(player.scene,world,false,new THREE.Vector3(50,0.2,0),0xffffff,12)
+    models.createCircle(player.scene,player.world,false,new THREE.Vector3(50,0.1,0),0x4444ff,15)
+    models.createCircle(player.scene,player.world,false,new THREE.Vector3(50,0.2,0),0xffffff,12)
 
-    models.createCube(player.scene,world,true,new THREE.Vector3(48,5,-2),0x0000ff,3,3,3)
-    models.createCube(player.scene,world,true,new THREE.Vector3(48,5,2),0xff0000,3,3,3)
-    models.createCube(player.scene,world,true,new THREE.Vector3(52,5,0),0x00ff00,3,3,3)
-    models.createCube(player.scene,world,true,new THREE.Vector3(50,8,0),0xffffff,3,3,3)
+    models.createCube(player.scene,player.world,true,new THREE.Vector3(48,5,-2),0x0000ff,3,3,3)
+    models.createCube(player.scene,player.world,true,new THREE.Vector3(48,5,2),0xff0000,3,3,3)
+    models.createCube(player.scene,player.world,true,new THREE.Vector3(52,5,0),0x00ff00,3,3,3)
+    models.createCube(player.scene,player.world,true,new THREE.Vector3(50,8,0),0xffffff,3,3,3)
 
-    models.createNest(world,player.scene,1,new THREE.Vector3(10,3,10))
+    models.createNest(player.world,player.scene,1,new THREE.Vector3(70,1,-30))
 
 
 
@@ -644,7 +644,7 @@ models.createPond = function (
     //waterMesh.renderOrder = 2;
 
     // Shared wave animation logic
-    const waveHeight = 0.2;
+    const waveHeight = 0.23;
     const frequency = 0.5;
     const startTime = Date.now();
 
@@ -760,21 +760,10 @@ models.createPond = function (
 
     const colliderDesc = RAPIER.ColliderDesc.cuboid(width / 2, 0.1, height / 2)
         .setTranslation(pos.x, pos.y - 0.9, pos.z) // Slightly under surface
-        .setSensor(true); // Doesn't physically block, but detects overlaps
 
     const collider = world.createCollider(colliderDesc, rigidBody);
 
-    function collide(eventqueue, func){
-        eventqueue.drainCollisionEvents((handle1, handle2, started) => {
-            const colliderA = physicsWorld.getCollider(handle1);
-            const colliderB = physicsWorld.getCollider(handle2);
-            func();
-        });
-
-    }
-
     pond.physics = { body: rigidBody, collider };
-    pond.onCollide = collide;
     pond.update = update;
     return pond;
 };

@@ -109,7 +109,6 @@ const player = {
         // Raycast from player to camera to detect obstruction
         const raycaster = new THREE.Raycaster(playerPos, desiredCamPos.clone().sub(playerPos).normalize());
         const maxDistance = baseRadius;
-        //this.raycastObjects = this.scene.children.filter(obj => obj.isMesh && obj.name !== "Player");
         const intersects = raycaster.intersectObjects(this.scene.children, true);
 
         
@@ -118,7 +117,7 @@ const player = {
         for (let i = 0; i < intersects.length; i++) {
             const hit = intersects[i];
             if (hit.distance < baseRadius && !this.body.children.includes(hit.object)) {
-                //radius = hit.distance - 0.1; // just in front of the hit point
+                radius = hit.distance - 0.1; // just in front of the hit point
                 clipped = true;
                 break;
             }

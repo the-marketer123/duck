@@ -273,7 +273,8 @@ models.createDock = function (
     return dock;
 }
 
-models.createCurvedWall = function({
+models.createCurvedWall = function(
+    {
     innerRadius = 1,
     outerRadius = 2,
     angleStart = -Math.PI / 2,
@@ -282,7 +283,8 @@ models.createCurvedWall = function({
     minHeight = 0.2,
     maxHeight = 1.5,
     wallDepth = 1.0
-} = {}) {
+    } = {}
+) {
     const geometry = new THREE.BufferGeometry();
     const positions = [];
     const indices = [];
@@ -382,7 +384,7 @@ models.createCurvedWall = function({
     });
 
     return new THREE.Mesh(geometry, material);
-};
+}
 
 models.createCircle = function (
     scene,
@@ -434,6 +436,18 @@ models.createBase = function(
     base.add(semicircle);
     app.phys.addToMeshACC(semicircle,player.world,false)
     player.scene.add(base)
+
+    
+    models.createCircle(player.scene,world,false,new THREE.Vector3(50,0.1,0),0x4444ff,15)
+    models.createCircle(player.scene,world,false,new THREE.Vector3(50,0.2,0),0xffffff,12)
+
+    models.createCube(player.scene,world,true,new THREE.Vector3(48,5,-2),0x0000ff,3,3,3)
+    models.createCube(player.scene,world,true,new THREE.Vector3(48,5,2),0xff0000,3,3,3)
+    models.createCube(player.scene,world,true,new THREE.Vector3(52,5,0),0x00ff00,3,3,3)
+    models.createCube(player.scene,world,true,new THREE.Vector3(50,8,0),0xffffff,3,3,3)
+
+    models.createNest(world,player.scene,1,new THREE.Vector3(10,3,10))
+
 
 
 }

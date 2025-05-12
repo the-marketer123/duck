@@ -431,6 +431,7 @@ models.createBase = function(
         minHeight: 3,
         maxHeight: 15,
         wallDepth:30,
+        segments:100,
     });
     semicircle.position.set(50,10,0)
     base.add(semicircle);

@@ -47,13 +47,12 @@ const player = {
             impulse.x += sdir * speed //* d;
             impulse.z += cdir * speed //* d;
         }
-        if (this.physBody.linvel().y < 0.01 && this.physBody.linvel().y > -0.01){
+        if (this.grounded === false && this.physBody.linvel().y < 0.01 && this.physBody.linvel().y > -0.01){
             this.grounded = true;
-        } else {
-            this.grounded = false;
         }
         if (app.user.keysHeld[' '] && this.grounded){
             this.physBody.setLinvel({x:this.physBody.linvel().x, y:this.jumpSpeed * 50 * this.jumpspeedBUFF, z:this.physBody.linvel().z}, true);
+            this.grounded = false;
         }
         impulse.x *= 100;
         impulse.z *= 100;

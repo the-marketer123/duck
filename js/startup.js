@@ -18,6 +18,8 @@ window.SkeletonUtils = SkeletonUtils.SkeletonUtils
 let reflec = await import('three/addons/objects/Reflector.js')
 window.Reflector = reflec.Reflector
 window.BufferGeometryUtils = await import('three/addons/utils/BufferGeometryUtils.js');
+let fontload = await import('three/addons/loaders/FontLoader.js');
+window.FontLoader = fontload.FontLoader
 
 /*
 let models1 = await import('./models.js');

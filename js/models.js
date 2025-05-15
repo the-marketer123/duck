@@ -1,7 +1,7 @@
 (async function() {
 
-while (!window.BufferGeometryUtils) {
-    await new Promise(resolve => setTimeout(resolve, 50));
+while (!window.BufferGeometryUtils || !window.FontLoader  || !window.player) {
+    await new Promise(resolve => setTimeout(resolve, 500));
 }
 window.drawCanvas=document.getElementById('draw-canvas')
 window.dw_ctx=drawCanvas.getContext('2d')
@@ -420,6 +420,30 @@ models.createCube = function (
     if (world) {app.phys.addToMeshACC(cube,world,phys)}
 }
 
+models.text = function(text,pos=new THREE.Vector3(0,0,0), rot = new THREE.Quaternion(0,0,0,1)) {
+    const textGeometry = new THREE.TextGeometry(text, {
+        font: font,
+        size: 1,
+        height: 0.3,
+        curveSegments: 12,
+        bevelEnabled: true,
+        bevelThickness: 0.05,
+        bevelSize: 0.02,
+        bevelOffset: 0,
+        bevelSegments: 5
+    });
+
+    textGeometry.center(); // Optional: center the text
+
+    const textMaterial = new THREE.MeshStandardMaterial({ color: 0xffcc00 });
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+    textMesh.position.copy(pos); // Adjust based on your sign's location
+    textMesh.rotation.copy(rot); // Adjust based on your sign's location
+    return textMesh
+}
+
+
 models.createBase = function(
     player
 ){
@@ -437,20 +461,27 @@ models.createBase = function(
     base.add(semicircle);
     app.phys.addToMeshACC(semicircle,player.world,false)
     player.scene.add(base)
-
     
-    models.createCircle(player.scene,player.world,false,new THREE.Vector3(50,0.1,0),0x4444ff,15)
-    models.createCircle(player.scene,player.world,false,new THREE.Vector3(50,0.2,0),0xffffff,12)
-
-    models.createCube(player.scene,player.world,true,new THREE.Vector3(48,5,-2),0x0000ff,3,3,3)
-    models.createCube(player.scene,player.world,true,new THREE.Vector3(48,5,2),0xff0000,3,3,3)
-    models.createCube(player.scene,player.world,true,new THREE.Vector3(52,5,0),0x00ff00,3,3,3)
-    models.createCube(player.scene,player.world,true,new THREE.Vector3(50,8,0),0xffffff,3,3,3)
-
-    models.createNest(player.world,player.scene,1,new THREE.Vector3(70,1,-30))
-
-
-
+    
+    models.createCircle(base,player.world,false,new THREE.Vector3(50,0.1,0),0x4444ff,15)
+    models.createCircle(base,player.world,false,new THREE.Vector3(50,0.2,0),0xffffff,12)
+    
+    models.createCube(base,player.world,true,new THREE.Vector3(48,5,-2),0x0000ff,3,3,3)
+    models.createCube(base,player.world,true,new THREE.Vector3(48,5,2),0xff0000,3,3,3)
+    models.createCube(base,player.world,true,new THREE.Vector3(52,5,0),0x00ff00,3,3,3)
+    models.createCube(base,player.world,true,new THREE.Vector3(50,8,0),0xffffff,3,3,3)
+    dat = player.dat
+    
+    function update(player){
+        dat = player.dat
+        for (let i = 0;i<dat.nests.length;i++){
+            models.createNest(player.world,base,dat.nests[i].lvl,new THREE.Vector3(95 + (-1*(i-12)*(i-12)*2/6),1,4*i - 50));
+            console.log('hello')
+        }
+    }
+    update(player)
+    return({update})
+    
 }
 
 models.createNest = function(
@@ -459,6 +490,7 @@ models.createNest = function(
     level = 1,
     pos = new THREE.Vector3(0, 0, 0),
     facing = new THREE.Vector3(0, 0, 1),
+    price = 0,
 
 ) {
     let nest = new THREE.Group();
@@ -467,6 +499,26 @@ models.createNest = function(
     nest.lookAt(facing);
     scene.add(nest);
     switch (level){
+        case 0:
+            let sign_geo = new THREE.BoxGeometry(0.5,2,3)
+            let pole_geo = new THREE.BoxGeometry(0.5,3,0.5)
+
+            let wood_mat = new THREE.MeshStandardMaterial({color:0xcc7700})
+
+            let text_text = 'Price: '+ price
+
+            let sign = new THREE.Mesh(sign_geo, wood_mat)
+            let pole = new THREE.Mesh(pole_geo, wood_mat)
+
+            sign.position.y+=2.5
+            pole.position.y+=1.5
+
+            nest.add(pole)
+            nest.add(sign)
+            sign.rotation.y = Math.PI / 2
+
+            //let text_mesh = models.text(text_text)
+            break;
         case 1:
             const twigCount = 500;
             const nestRadius = 1.5;

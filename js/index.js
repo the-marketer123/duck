@@ -1,6 +1,7 @@
 (async function() {
 while (!window.startup || !window.rapierReady || !window.modelsReady) {
-    await new Promise(resolve => setTimeout(resolve, 50));
+    console.log('check')
+    await new Promise(resolve => setTimeout(resolve, 500));
 }
 
 let scene = new THREE.Scene();

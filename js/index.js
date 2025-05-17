@@ -39,7 +39,7 @@ function start () {
     pointerlock.lock();
     app.ui.erase()
     main_menu_ground.visible = false
-    player.create(new THREE.Vector3(0, 2, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, pointerlock, 'default');
+    player.create(new THREE.Vector3(0, 4, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, pointerlock, 'default');
 }
 // menu
 let ducks = []
@@ -82,6 +82,7 @@ function main_menu (){
 main_menu()
 const eventQueue = new RAPIER.EventQueue(true);
 let map = loadMap(scene,world,eventQueue,player)
+
 //nessecary stuff
 window.addEventListener("resize", () => {
     app.ui.recenter();

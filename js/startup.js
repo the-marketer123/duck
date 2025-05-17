@@ -17,18 +17,13 @@ let SkeletonUtils = await import('three/addons/utils/SkeletonUtils.js');
 window.SkeletonUtils = SkeletonUtils.SkeletonUtils
 let reflec = await import('three/addons/objects/Reflector.js')
 window.Reflector = reflec.Reflector
+let fontgeo = await import('three/addons/geometries/TextGeometry.js');
+window.TextGeometry = fontgeo.TextGeometry
 window.BufferGeometryUtils = await import('three/addons/utils/BufferGeometryUtils.js');
 let fontload = await import('three/addons/loaders/FontLoader.js');
 window.FontLoader = fontload.FontLoader
 
-/*
-let models1 = await import('./models.js');
-window.models = models1.default
-let loadMap1 = await import('./map.js');
-window.loadMap = loadMap1.default
-let player1 = await import('./player.js');
-window.player = player1.default
-*/
+
 let stats = await import('three/addons/libs/stats.module.js');
 let Stats = stats.default
 
@@ -38,7 +33,10 @@ window.app = {
     ui:{},
     ducks:{},
     user:{},
-    canvas:{}
+    canvas:{},
+    items:{},
+    dat:{},
+    gui:{},
 };
 
 window.statsui = new Stats()
@@ -57,6 +55,169 @@ drawCanvas.height = 500
 
 ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
 
+// map
+window.__baseCreated = window.__baseCreated || false;
+window.loadMap = function(scene,world,eventQueue,player) {
+    models.createGround(scene,world)
+    let ponds = []
+    ponds.push(
+        models.createPond(world, new THREE.Vector3(0,2,0), new THREE.Quaternion(0, 0, 0, 1),50,100)
+    );
+    ponds.forEach(p=>{scene.add(p)})  
+
+    async function update() {
+        ponds.forEach(p=>{
+            p.update()
+        })
+        if (!__baseCreated && player){
+            __baseCreated = true
+            if (app.dat.preexisting){
+                await models.createBase(player)
+            } else {
+                console.log('welp')
+                await models.createBase({scene,world,default: true})
+            }
+        }
+
+    }
+    return {update}
+
+}
+// data
+app.dat={
+        preexisting:false,
+        nests:[
+            {
+                lvl:1,
+                num:1,
+            },
+            {
+                lvl:1,
+                num:2,
+            },
+            {
+                lvl:1,
+                num:3,
+            },
+            {
+                lvl:1,
+                num:4,
+            },
+            {
+                lvl:1,
+                num:5,
+            },
+            {
+                lvl:0,
+                num:6,
+            },
+            {
+                lvl:0,
+                num:7,
+            },
+            {
+                lvl:0,
+                num:8,
+            },
+            {
+                lvl:0,
+                num:9,
+            },
+            {
+                lvl:0,
+                num:10,
+            },
+            {
+                lvl:0,
+                num:11,
+            },
+            {
+                lvl:0,
+                num:12,
+            },
+            {
+                lvl:0,
+                num:13,
+            },
+            {
+                lvl:0,
+                num:14,
+            },
+            {
+                lvl:0,
+                num:15,
+            },
+            {
+                lvl:0,
+                num:16,
+            },
+            {
+                lvl:0,
+                num:17,
+            },
+            {
+                lvl:0,
+                num:18,
+            },
+            {
+                lvl:0,
+                num:19,
+            },
+            {
+                lvl:0,
+                num:20,
+            },
+            {
+                lvl:0,
+                num:21,
+            },
+            {
+                lvl:0,
+                num:22,
+            },
+            {
+                lvl:0,
+                num:23,
+            },
+            {
+                lvl:0,
+                num:24,
+            },
+            {
+                lvl:0,
+                num:25,
+            },
+
+        ],
+        bees:{
+
+        },
+        equip:{
+            head:'none',
+            back:'none',
+            shoes:'none',
+            rod:'none',
+            shoulder_r:'none',
+            shoulder_l:'none',
+            belt:'none',
+            net:'none',
+        },  
+        pollen:
+        0
+        ,
+        honey:
+        0
+        ,
+        items: {
+
+        },
+        stats: {
+
+        },
+
+    } 
+// items
+app.items.list = []
 // ducks
 app.ducks.list = [] // list of all living ducks
 app.ducks.createdebugDuck = function (scene,pos){
@@ -154,18 +315,36 @@ app.phys.addToMesh = function(mesh, world, physics = true) {
 
     let body = world.createRigidBody(rigidBodyDesc);
     body.setRotation(mesh.quaternion);
+    body.setTranslation(new THREE.Vector3(x,y,z))
 
     let colliderDesc = RAPIER.ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2);
     let collider = world.createCollider(colliderDesc, body);
 
     let remove = false;
     function update() {
-        //if (doupdate === false)return;
+         if (physics) {
             mesh.position.copy(body.translation());
             mesh.quaternion.copy(body.rotation());
             if (remove) {
                 world.removeRigidBody(body);
                 app.phys.bodies[num] = undefined;
+                mesh.parent.remove(mesh)
+                remove = false;
+            }
+        } else {
+            mesh.updateWorldMatrix(true, true);
+            let pos = new THREE.Vector3();
+            mesh.getWorldPosition(pos);
+
+            body.setTranslation(pos, false);
+            body.setRotation(mesh.quaternion.clone(), false);
+
+            if (remove) {
+                world.removeRigidBody(body);
+                app.phys.bodies[num] = undefined;
+                mesh.parent.remove(mesh)
+                remove = false;
+            }
         }
     }
 
@@ -175,7 +354,7 @@ app.phys.addToMesh = function(mesh, world, physics = true) {
     return { body, remove, collider, update };
  };
 
-app.phys.addREC = function(mesh,world,physics=false){
+app.phys.addREC = function(mesh,world,physics=false){ // add reccuring
     
     if (mesh.isMesh){
         let x = mesh.position?.x ?? 0;
@@ -195,11 +374,24 @@ app.phys.addREC = function(mesh,world,physics=false){
 
         let remove = false;
         function update() {
-            mesh.position.copy(body.translation());
-            mesh.quaternion.copy(body.rotation());
-            if (remove) {
-                world.removeRigidBody(body);
-                app.phys.bodies[num] = undefined;
+            if (physics) {
+                mesh.position.copy(body.translation());
+                mesh.quaternion.copy(body.rotation());
+                if (remove) {
+                    world.removeRigidBody(body);
+                    app.phys.bodies[num] = undefined;
+                    mesh.parent.remove(mesh)
+                    remove = false;
+                }
+            } else {
+                body.setTranslation(mesh.position)
+                body.setRotation(mesh.quaternion)
+                if (remove) {
+                    world.removeRigidBody(body);
+                    app.phys.bodies[num] = undefined;
+                    mesh.parent.remove(mesh)
+                    remove = false;
+                }
             }
         }
 
@@ -256,12 +448,24 @@ app.phys.addToMeshACC = function(mesh, world, physics = true) {
 
     let remove = false;
     function update() {
-        //if (!doupdate) return;
-        mesh.position.copy(body.translation());
-        mesh.quaternion.copy(body.rotation());
-        if (remove) {
-            world.removeRigidBody(body);
-            app.phys.bodies[num] = undefined;
+        if (physics) {
+            mesh.position.copy(body.translation());
+            mesh.quaternion.copy(body.rotation());
+            if (remove) {
+                world.removeRigidBody(body);
+                app.phys.bodies[num] = undefined;
+                mesh.parent.remove(mesh)
+                remove = false;
+            }
+        } else {
+            body.setTranslation(mesh.position)
+            body.setRotation(mesh.quaternion)
+            if (remove) {
+                world.removeRigidBody(body);
+                app.phys.bodies[num] = undefined;
+                mesh.parent.remove(mesh)
+                remove = false;
+            }
         }
     }
 
@@ -719,7 +923,20 @@ uiCanvas.addEventListener("click", () => {
  // Call this on window resize
 
 
-//
+// gui
+app.gui.items = {
+    buttons:[],
+    menus:[],
+    dialogue:[],
+    notif:[],
+    other:[],
+}
+app.gui.button = function(location='top'){
+
+}
+app.gui.update = function(){
+
+}
 
 
 

@@ -420,38 +420,54 @@ models.createCube = function (
     if (world) {app.phys.addToMeshACC(cube,world,phys)}
 }
 
-models.text = function(text,pos=new THREE.Vector3(0,0,0), rot = new THREE.Quaternion(0,0,0,1)) {
-    const textGeometry = new THREE.TextGeometry(text, {
+models.text = async function(
+    text,
+    font,
+    pos = new THREE.Vector3(0, 0, 0),
+    rot = new THREE.Quaternion(0, 0, 0, 1),
+    fitBox = { width: 3, height: 2 }, // dimensions of sign face to fit
+    color = 0x000000
+) {
+    const textGeometry = new TextGeometry(text, {
         font: font,
-        size: 1,
-        height: 0.3,
-        curveSegments: 12,
-        bevelEnabled: true,
-        bevelThickness: 0.05,
-        bevelSize: 0.02,
-        bevelOffset: 0,
-        bevelSegments: 5
+        size: 1, // initial size, will be scaled
+        depth: 0.3,
+        curveSegments: 3,
+        bevelEnabled: false,
     });
 
-    textGeometry.center(); // Optional: center the text
+    textGeometry.computeBoundingBox();
+    const box = textGeometry.boundingBox;
 
-    const textMaterial = new THREE.MeshStandardMaterial({ color: 0xffcc00 });
+    // Get original text size
+    const size = new THREE.Vector3();
+    box.getSize(size);
+
+    // Compute scale to fit text inside the fitBox
+    const scaleX = fitBox.width / size.x;
+    const scaleY = fitBox.height / size.y;
+    const scale = Math.min(scaleX, scaleY); // uniform scale
+
+    textGeometry.center(); // Center geometry for better scaling and placement
+
+    const textMaterial = new THREE.MeshStandardMaterial({ color: color });
     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 
-    textMesh.position.copy(pos); // Adjust based on your sign's location
-    textMesh.rotation.copy(rot); // Adjust based on your sign's location
-    return textMesh
-}
+    textMesh.scale.set(scale, scale, 1);
+    textMesh.position.copy(pos);
+    textMesh.quaternion.copy(rot);
 
+    return textMesh;
+};
 
-models.createBase = function(
+models.createBase =async function(
     player
 ){
     let base = new THREE.Group();
     base.position.set(0,0,0)
     const semicircle = models.createCurvedWall({
-        innerRadius: 50,
-        outerRadius: 51,
+        innerRadius: 52,
+        outerRadius: 53,
         minHeight: 3,
         maxHeight: 15,
         wallDepth:30,
@@ -470,28 +486,36 @@ models.createBase = function(
     models.createCube(base,player.world,true,new THREE.Vector3(48,5,2),0xff0000,3,3,3)
     models.createCube(base,player.world,true,new THREE.Vector3(52,5,0),0x00ff00,3,3,3)
     models.createCube(base,player.world,true,new THREE.Vector3(50,8,0),0xffffff,3,3,3)
-    dat = player.dat
+    dat = app.dat
     
-    function update(player){
-        dat = player.dat
-        for (let i = 0;i<dat.nests.length;i++){
-            models.createNest(player.world,base,dat.nests[i].lvl,new THREE.Vector3(95 + (-1*(i-12)*(i-12)*2/6),1,4*i - 50));
-            console.log('hello')
+    async function update(player){
+        dat = app.dat
+        const loader = new FontLoader();
+        const font = await new Promise((resolve, reject) => {
+            loader.load(
+                './font.json',
+                resolve,
+                undefined,
+                reject
+            );
+        });
+        for (let i = 0;i<(player.default ? 25 : dat.nests.length);i++){
+            await models.createNest(player.world,base,(player.default ? (i<6?1:0) : dat.nests[i].lvl),new THREE.Vector3(100 + (-1*(i-12)*(i-12)*2/6),1,4*i - 50),new THREE.Vector3(50,0,0),Math.round(5*(2**i)),font);
         }
     }
-    update(player)
+    await update(player)
     return({update})
     
 }
 
-models.createNest = function(
+models.createNest = async function(
     world,
     scene,
     level = 1,
     pos = new THREE.Vector3(0, 0, 0),
-    facing = new THREE.Vector3(0, 0, 1),
+    facing = new THREE.Vector3(0, 1, 0),
     price = 0,
-
+    font = undefined
 ) {
     let nest = new THREE.Group();
     nest.position.copy(pos)
@@ -505,19 +529,31 @@ models.createNest = function(
 
             let wood_mat = new THREE.MeshStandardMaterial({color:0xcc7700})
 
-            let text_text = 'Price: '+ price
+            let signage = 'Price: '+ price
 
             let sign = new THREE.Mesh(sign_geo, wood_mat)
             let pole = new THREE.Mesh(pole_geo, wood_mat)
 
-            sign.position.y+=2.5
-            pole.position.y+=1.5
+            sign.position.y+=2
+            pole.position.y+=1
+            sign.rotation.y = Math.PI / 2
+
 
             nest.add(pole)
             nest.add(sign)
-            sign.rotation.y = Math.PI / 2
 
-            //let text_mesh = models.text(text_text)
+            app.phys.addToMesh(sign,world,false)
+
+            let text_mesh = await models.text(
+                signage,
+                font,
+                undefined,
+                undefined,
+                { width: 2.8, height: 1.8 } // fitting inside the 3 x 2 sign face with margin
+            );
+            text_mesh.position.y += 2; // lift onto sign
+            text_mesh.position.z += 0.15; // slightly forward to avoid Z-fighting
+            nest.add(text_mesh);
             break;
         case 1:
             const twigCount = 500;
@@ -601,7 +637,7 @@ models.createNest = function(
             colorAttr.needsUpdate = true; 
 
             let physmesh = new THREE.Mesh(
-                new THREE.BoxGeometry(3.75, 1.25, 3.75),
+                new THREE.BoxGeometry(3.75, 1.1, 3.75),
                 new THREE.MeshBasicMaterial()
             )
             physmesh.visible = false;
@@ -657,7 +693,7 @@ models.createPond = function (
     reflector.position.y -= 0.21;
     reflector.material.transparent = true;
     reflector.material.opacity = 0.1;
-    pond.add(reflector);
+    //pond.add(reflector);
 
     // Transparent water surface with blue tint
     const waterMaterial = new THREE.MeshBasicMaterial({

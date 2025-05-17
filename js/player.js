@@ -9,175 +9,41 @@ const player = {
     yaw:0,
     deltaYaw:0,
     deltaPitch:0,
-    walkSpeed:0.1,
-    jumpSpeed:0.2,
+    walkSpeed:2000,
+    jumpSpeed:0.3,
     pointerlock:undefined,
     walkspeedBUFF: 1,
     jumpspeedBUFF: 1,
-    dat:{
-        nests:[
-            {
-                lvl:1,
-                num:1,
-            },
-            {
-                lvl:1,
-                num:2,
-            },
-            {
-                lvl:1,
-                num:3,
-            },
-            {
-                lvl:1,
-                num:4,
-            },
-            {
-                lvl:1,
-                num:5,
-            },
-            {
-                lvl:0,
-                num:6,
-            },
-            {
-                lvl:0,
-                num:7,
-            },
-            {
-                lvl:0,
-                num:8,
-            },
-            {
-                lvl:0,
-                num:9,
-            },
-            {
-                lvl:0,
-                num:10,
-            },
-            {
-                lvl:0,
-                num:11,
-            },
-            {
-                lvl:0,
-                num:12,
-            },
-            {
-                lvl:0,
-                num:13,
-            },
-            {
-                lvl:0,
-                num:14,
-            },
-            {
-                lvl:0,
-                num:15,
-            },
-            {
-                lvl:0,
-                num:16,
-            },
-            {
-                lvl:0,
-                num:17,
-            },
-            {
-                lvl:0,
-                num:18,
-            },
-            {
-                lvl:0,
-                num:19,
-            },
-            {
-                lvl:0,
-                num:20,
-            },
-            {
-                lvl:0,
-                num:21,
-            },
-            {
-                lvl:0,
-                num:22,
-            },
-            {
-                lvl:0,
-                num:23,
-            },
-            {
-                lvl:0,
-                num:24,
-            },
-            {
-                lvl:0,
-                num:25,
-            },
-
-        ],
-        bees:{
-
-        },
-        equip:{
-            head:'none',
-            back:'none',
-            shoes:'none',
-            rod:'none',
-            shoulder_r:'none',
-            shoulder_l:'none',
-            belt:'none',
-            net:'none',
-        },  
-        pollen:
-        0
-        ,
-        honey:
-        0
-        ,
-        items: {
-
-        },
-        stats: {
-
-        },
-
-    },    
     update:function(){
         
         if (this.physBody == undefined) return;
-        let cosPitch = Math.cos(-this.pitch);
-        let sinPitch = Math.sin(-this.pitch);
-        let cosYaw = Math.cos(-this.yaw);
-        let sinYaw = Math.sin(-this.yaw);
-        let d = this.clock.getDelta()
+        let delta = this.clock.getDelta(); // Seconds since last frame
 
-        let sdir = sinYaw,
-            cdir = -cosYaw,
-            speed = (-this.walkSpeed * (this.grounded ? 1 : 0.85) ) * this.walkspeedBUFF;
+        let cosYaw = Math.cos(this.yaw);
+        let sinYaw = Math.sin(this.yaw);
 
-        let impulse = { x: 0, y: 0, z: 0 }; // Initialize impulse vector
+        let walkSpeed = this.walkSpeed * this.walkspeedBUFF * (this.grounded ? 1 : 0.85); // units/second
+        let moveStep = walkSpeed * delta;
 
-        d *= 10000;
-        d = 1;
+        let impulse = { x: 0, y: 0, z: 0 };
+
         if (app.user.keysHeld.d) {
-            impulse.x += cdir * speed //* d;
-            impulse.z -= sdir * speed //* d;
-        } 
+            impulse.x += cosYaw * moveStep;
+            impulse.z -= sinYaw * moveStep;
+        }
         if (app.user.keysHeld.a) {
-            impulse.x -= cdir * speed //* d;
-            impulse.z += sdir * speed //* d;
+            impulse.x -= cosYaw * moveStep;
+            impulse.z += sinYaw * moveStep;
         }
         if (app.user.keysHeld.w) {
-            impulse.x -= sdir * speed //* d;
-            impulse.z -= cdir * speed //* d;
+            impulse.x -= sinYaw * moveStep;
+            impulse.z -= cosYaw * moveStep;
         }
         if (app.user.keysHeld.s) {
-            impulse.x += sdir * speed //* d;
-            impulse.z += cdir * speed //* d;
+            impulse.x += sinYaw * moveStep;
+            impulse.z += cosYaw * moveStep;
         }
+
         if (this.grounded === false && this.physBody.linvel().y < 0.01 && this.physBody.linvel().y > -0.01){
             this.grounded = true;
         }
@@ -185,9 +51,12 @@ const player = {
             this.physBody.setLinvel({x:this.physBody.linvel().x, y:this.jumpSpeed * 50 * this.jumpspeedBUFF, z:this.physBody.linvel().z}, true);
             this.grounded = false;
         }
-        impulse.x *= 100;
-        impulse.z *= 100;
-        this.physBody.setLinvel({x:impulse.x, y:this.physBody.linvel().y, z:impulse.z}, true);
+        this.physBody.setLinvel({
+            x: impulse.x,
+            y: this.physBody.linvel().y - (0.1 * delta),
+            z: impulse.z
+        }, true);
+
         this.physBody.setRotation(this.body.quaternion, true);  
 
         this.body.position.set(this.physBody.translation().x, this.physBody.translation().y, this.physBody.translation().z);

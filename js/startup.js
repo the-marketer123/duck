@@ -64,7 +64,7 @@ window.loadMap = function(scene,world,eventQueue,player) {
         models.createPond(world, new THREE.Vector3(0,2,0), new THREE.Quaternion(0, 0, 0, 1),50,100)
     );
     ponds.forEach(p=>{scene.add(p)})  
-    app.ui.GUIbutton(undefined,40,50,0,5,-2,2,'test',function(){console.log('wsp')})
+    app.ui.GUIbutton(undefined,40,60,0,5,-10,10,'test',function(){console.log('wsp')})
 
     async function update() {
         ponds.forEach(p=>{
@@ -615,7 +615,6 @@ app.ui.texts = [];  //text
 app.ui.buttons = []; //buttons
 app.ui.GUIbuttons = []; //GUI buttons
 app.ui.images = []; //images
-app.ui.items = []; // stores buttons, images, and texts
 app.ui.button = function (text, x, y, link, font, size, back_color = 0xff0000, padding = 15, back = true, hover = true, outline = true, outline_thickness = 1) {
     let custom_x = x;
     let custom_y = y;
@@ -718,10 +717,9 @@ app.ui.button = function (text, x, y, link, font, size, back_color = 0xff0000, p
         update: update,
         link: link,
         hover: hover,
-        original: { text, x:custom_x, y:custom_y, link, font, size, back, back_color, hover, padding, outline, outline_thickness }
+        original: { text, x:custom_x, y:custom_y, link, font, size, back, back_color, hover, padding, outline, outline_thickness, update }
     };
     app.ui.buttons.push(button);
-    app.ui.items.push({ type: "button", data: button.original });
  };
 app.ui.GUIbutton_hover = false
 app.ui.GUIbutton_click = false
@@ -812,10 +810,21 @@ app.ui.GUIbutton = function (params,minX,maxX,minY,maxY,minZ,maxZ,title='',link=
             link: link,
         };
         app.ui.GUIbuttons.push(params);
-        app.ui.items.push({ type: "GUIbutton", data: params });
     } else {
+        params = {
+            minX,
+            maxX,
+            minY,
+            maxY,
+            minZ,
+            maxZ,
+            title,
+            color,
+            location,
+            update: update,
+            link: link,
+        };        
         app.ui.GUIbuttons.push(params);
-        app.ui.items.push({ type: "GUIbutton", data: params });
     }
  };
 app.ui.text = function (text, x, y, font, size, back_color = 0xff0000, padding = 15, back = true, outline = true, outline_thickness = 1) {
@@ -900,8 +909,7 @@ app.ui.text = function (text, x, y, font, size, back_color = 0xff0000, padding =
         ui_ctx.fillText(text, x, y);
     }
 
-    app.ui.texts.push({ update });
-    app.ui.items.push({ type: "text", data: { text, x:custom_x, y:custom_y, font, size, back, back_color} });
+    app.ui.texts.push({ update, text, x:custom_x, y:custom_y, font, size, back, back_color});
  };
 app.ui.image = function (path, x = 0, y = 0, width = 100, height = 100) {
     let custom_x = x;
@@ -947,8 +955,7 @@ app.ui.image = function (path, x = 0, y = 0, width = 100, height = 100) {
             ui_ctx.imageSmoothingEnabled = true;
             ui_ctx.drawImage(img, x, y, width, height);
         }
-        app.ui.images.push({ update });
-        app.ui.items.push({ type: "image", data: { path, custom_x, y:custom_y, width, height } });
+        app.ui.images.push({ update, path, custom_x, y:custom_y, width, height });
      };
  };
  
@@ -966,39 +973,43 @@ app.ui.background = function (color) {
  };
 
 
-app.ui.erase = function (gbt=true,itm=true,img=true,txt=true,btn=true) {
-    if (itm) app.ui.items = []
-    if (img) app.ui.images = []
-    if (txt)app.ui.texts = []
-    if (btn)app.ui.buttons = []
-    if (gbt)app.ui.GUIbuttons = []
+app.ui.erase = function (gbt=true,img=true,txt=true,btn=true) {
+    if (img) {app.ui.images = []}
+    if (txt) {app.ui.texts = []}
+    if (btn) {app.ui.buttons = []}
+    if (gbt) {app.ui.GUIbuttons = []}
     ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
  };
  
 app.ui.recenter = function () {
     ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
 
+    let but = app.ui.buttons
     app.ui.buttons = [];
+    but.forEach(item=>{
+        let d = item.original
+        app.ui.button(d.text, d.x, d.y, d.link, d.font, d.size, d.back_color, d.padding || 15, d.back, d.hover, d.outline ?? true, d.outline_thickness ?? 1);
+    })
+
+    let txt = app.ui.texts
     app.ui.texts = [];
+    txt.forEach(item=>{
+        let d = item
+        app.ui.text(d.text, d.x, d.y, d.font, d.size, d.back_color, d.padding || 15, d.back, d.outline ?? true, d.outline_thickness ?? 1);
+    })
+
+    let img = app.ui.images
     app.ui.images = [];
+    img.forEach(item=>{
+        let d = item
+        app.ui.image(d.path, d.x, d.y, d.width, d.height);
+    })
+
+    let gbt = app.ui.GUIbuttons
     app.ui.GUIbuttons = [];
-
-    const smth = app.ui.items;
-    app.ui.items = [];
-
-    smth.forEach(item => {
-        const d = item.data;
-
-        if (item.type === "button") {
-            app.ui.button(d.text, d.x, d.y, d.link, d.font, d.size, d.back_color, d.padding || 15, d.back, d.hover, d.outline ?? true, d.outline_thickness ?? 1);
-        } else if (item.type === "image") {
-            app.ui.image(d.path, d.x, d.y, d.width, d.height);
-        } else if (item.type === "text") {
-            app.ui.text(d.text, d.x, d.y, d.font, d.size, d.back_color, d.padding || 15, d.back, d.outline ?? true, d.outline_thickness ?? 1);
-        } else if (item.type === 'GUIbutton'){
-            app.ui.GUIbutton(d)
-        }
-    });
+    gbt.forEach(item=>{
+        app.ui.GUIbutton(item)
+    })
  };
 
 uiCanvas.addEventListener("mousemove", (e) => {

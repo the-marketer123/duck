@@ -700,10 +700,7 @@ models.createPond = function (
         color: waterColor,
         transparent: true,
         opacity: 0.7,
-        roughness: 0.7,
-        metalness: 0.1,
         side: THREE.DoubleSide,
-        flatShading: true,
     });
     const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
     waterMesh.rotation.x = -Math.PI / 2;

@@ -37,7 +37,7 @@ let world = new RAPIER.World({x:0,y:-9.7,z:0})
 // setup
 function start () {
     pointerlock.lock();
-    app.ui.erase()
+    app.ui.erase(false)
     main_menu_ground.visible = false
     player.create(new THREE.Vector3(0, 4, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, pointerlock, 'default');
 }
@@ -115,7 +115,7 @@ function draw() {
     }
 
     app.phys.update(world)
-    app.ui.update()
+    app.ui.update(player)
     statsui.update();
     renderer.render(scene, camera);
     requestAnimationFrame(draw);

@@ -12,7 +12,7 @@ window.Sky = sky.Sky
 let GLTFLoader = await import('three/addons/loaders/GLTFLoader.js');
 window.GLTFLoader = GLTFLoader.GLTFLoader
 let FBXLoader = await import('three/addons/loaders/FBXLoader.js');
-window.FBXLoader = FBXLoader.FBXLOader
+window.FBXLoader = FBXLoader.FBXLoader
 let SkeletonUtils = await import('three/addons/utils/SkeletonUtils.js');
 window.SkeletonUtils = SkeletonUtils.SkeletonUtils
 let reflec = await import('three/addons/objects/Reflector.js')
@@ -64,6 +64,7 @@ window.loadMap = function(scene,world,eventQueue,player) {
         models.createPond(world, new THREE.Vector3(0,2,0), new THREE.Quaternion(0, 0, 0, 1),50,100)
     );
     ponds.forEach(p=>{scene.add(p)})  
+    app.ui.GUIbutton(undefined,40,50,0,5,-2,2,'test',function(){console.log('wsp')})
 
     async function update() {
         ponds.forEach(p=>{
@@ -74,7 +75,6 @@ window.loadMap = function(scene,world,eventQueue,player) {
             if (app.dat.preexisting){
                 await models.createBase(player)
             } else {
-                console.log('welp')
                 await models.createBase({scene,world,default: true})
             }
         }
@@ -82,7 +82,7 @@ window.loadMap = function(scene,world,eventQueue,player) {
     }
     return {update}
 
-}
+ }
 // data
 app.dat={
         preexisting:false,
@@ -599,7 +599,7 @@ app.rend.addShadow = function(obj,ignore=undefined){
     });
  }
 // ui
-app.ui.update = function () {
+app.ui.update = function (player) {
     ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
     if (app.ui.back_color && app.ui.back_color !== 'none') {
         app.ui.background(app.ui.back_color);
@@ -607,10 +607,13 @@ app.ui.update = function () {
     app.ui.buttons.forEach(b=>b.update())
     app.ui.texts.forEach(b=>b.update())
     app.ui.images.forEach(b=>b.update())
+    app.ui.GUIbuttons.forEach(b=>b.update(player,b))
+    app.ui.GUIbutton_click = false
  }
 app.ui.back_color = 'none'; // background color, none means transparent
 app.ui.texts = [];  //text
 app.ui.buttons = []; //buttons
+app.ui.GUIbuttons = []; //GUI buttons
 app.ui.images = []; //images
 app.ui.items = []; // stores buttons, images, and texts
 app.ui.button = function (text, x, y, link, font, size, back_color = 0xff0000, padding = 15, back = true, hover = true, outline = true, outline_thickness = 1) {
@@ -719,6 +722,101 @@ app.ui.button = function (text, x, y, link, font, size, back_color = 0xff0000, p
     };
     app.ui.buttons.push(button);
     app.ui.items.push({ type: "button", data: button.original });
+ };
+app.ui.GUIbutton_hover = false
+app.ui.GUIbutton_click = false
+app.ui.GUIbutton = function (params,minX,maxX,minY,maxY,minZ,maxZ,title='',link=function(){console.log('Hello World!')},color=0x0000ff,location='top') {
+    if (params){
+        minX = params.minX
+        maxX = params.maxX
+        minY = params.minY
+        maxY = params.maxY
+        minZ = params.minZ
+        maxZ = params.maxZ
+        title = params.title
+        link = params.link
+        color = params.color
+        location = params.location
+    }
+    function roundRect(ctx, x, y, width, height, radius) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+    }
+    function update(player,params) {
+        let x = player.body ? player.body.position.x : 0 
+        let y = player.body ? player.body.position.y : 0 
+        let z = player.body ? player.body.position.z : 0 
+
+        if (x > params.minX && x < params.maxX){
+        if (y > params.minY && y < params.maxY){
+        if (z > params.minZ && z < params.maxZ){
+            switch (location){
+                case 'top':
+                    ui_ctx.font = "50px Cal Sans";
+                    ui_ctx.textBaseline = "top";
+
+                    if (app.ui.GUIbutton_hover) {
+                        ui_ctx.shadowColor = '#ffffff';
+                        ui_ctx.shadowBlur = 20;
+                    } else {
+                        ui_ctx.shadowBlur = 0;
+                    }
+                    if (app.ui.GUIbutton_click || app.user.keysPressed.e){
+                        params.link()
+                    }
+                    ui_ctx.globalAlpha = 0.75
+                    ui_ctx.fillStyle = '#6666ff';
+                    roundRect(ui_ctx, window.innerWidth/2 - window.innerWidth * 1/8 + 5,                           12.5,   window.innerWidth * 1/4, 60, 5)
+                    ui_ctx.fill();
+                    ui_ctx.fillStyle = '#aaaaaa';
+                    roundRect(ui_ctx, window.innerWidth/2 - window.innerWidth * 1/8 - 75, 4,    75,                      75, 5)
+                    ui_ctx.fill();
+                    ui_ctx.fillStyle = '#ffffff';
+                    roundRect(ui_ctx, window.innerWidth/2 - window.innerWidth * 1/8 - 67.5, 11.5, 60,                      60, 5)
+                    ui_ctx.fill();
+                    ui_ctx.globalAlpha = 1
+
+                    ui_ctx.fillStyle = "#000000";
+                    ui_ctx.shadowBlur = 0;
+                    const metrics = ui_ctx.measureText(params.title);
+                    const textWidth = metrics.width;
+
+                    ui_ctx.fillText(params.title, window.innerWidth/2-textWidth/2,20);
+                    ui_ctx.fillStyle = "#666666";
+                    ui_ctx.fillText('E', window.innerWidth/2 - window.innerWidth * 1/8 - 50,20);
+                    break;
+            }
+        }}}
+    }
+    if (!params){
+        let params = {
+            minX,
+            maxX,
+            minY,
+            maxY,
+            minZ,
+            maxZ,
+            title,
+            color,
+            location,
+            update: update,
+            link: link,
+        };
+        app.ui.GUIbuttons.push(params);
+        app.ui.items.push({ type: "GUIbutton", data: params });
+    } else {
+        app.ui.GUIbuttons.push(params);
+        app.ui.items.push({ type: "GUIbutton", data: params });
+    }
  };
 app.ui.text = function (text, x, y, font, size, back_color = 0xff0000, padding = 15, back = true, outline = true, outline_thickness = 1) {
     let custom_x = x;
@@ -868,11 +966,12 @@ app.ui.background = function (color) {
  };
 
 
-app.ui.erase = function () {
-    app.ui.items = []
-    app.ui.images = []
-    app.ui.texts = []
-    app.ui.buttons = []
+app.ui.erase = function (gbt=true,itm=true,img=true,txt=true,btn=true) {
+    if (itm) app.ui.items = []
+    if (img) app.ui.images = []
+    if (txt)app.ui.texts = []
+    if (btn)app.ui.buttons = []
+    if (gbt)app.ui.GUIbuttons = []
     ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
  };
  
@@ -882,6 +981,7 @@ app.ui.recenter = function () {
     app.ui.buttons = [];
     app.ui.texts = [];
     app.ui.images = [];
+    app.ui.GUIbuttons = [];
 
     const smth = app.ui.items;
     app.ui.items = [];
@@ -895,6 +995,8 @@ app.ui.recenter = function () {
             app.ui.image(d.path, d.x, d.y, d.width, d.height);
         } else if (item.type === "text") {
             app.ui.text(d.text, d.x, d.y, d.font, d.size, d.back_color, d.padding || 15, d.back, d.outline ?? true, d.outline_thickness ?? 1);
+        } else if (item.type === 'GUIbutton'){
+            app.ui.GUIbutton(d)
         }
     });
  };
@@ -904,40 +1006,38 @@ uiCanvas.addEventListener("mousemove", (e) => {
      const mx = e.clientX - rect.left;
      const my = e.clientY - rect.top;
  
-     app.ui.buttons.forEach(button => {
-         button.hovered = (
-             mx >= button.x && mx <= button.x + button.width &&
-             my >= button.y && my <= button.y + button.height
-         );
-     });
+    app.ui.buttons.forEach(button => {
+        button.hovered = (
+            mx >= button.x && mx <= button.x + button.width &&
+            my >= button.y && my <= button.y + button.height
+        );
+    });
+    if (
+        mx >= window.innerWidth/2 - window.innerWidth*1/4 &&
+        mx <= window.innerWidth/2 + window.innerWidth*1/4 &&
+        my >= 5 &&
+        my <= 55
+    ) {
+        app.ui.GUIbutton_hover = true;
+    } else {
+        app.ui.GUIbutton_hover = false;
+    }
+     
  });
  
 uiCanvas.addEventListener("click", () => {
-     app.ui.buttons.forEach(button => {
+    app.ui.buttons.forEach(button => {
          if (button.hovered) {
              button.link();
          }
-     });
+    });
+    if (app.ui.GUIbutton_hover){
+        app.ui.GUIbutton_click = true
+    } 
  });
  
  // Call this on window resize
-
-
-// gui
-app.gui.items = {
-    buttons:[],
-    menus:[],
-    dialogue:[],
-    notif:[],
-    other:[],
-}
-app.gui.button = function(location='top'){
-
-}
-app.gui.update = function(){
-
-}
-
+//
 
 
 window.startup = true

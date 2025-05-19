@@ -382,8 +382,8 @@ models.createCurvedWall = function(
         side: THREE.DoubleSide,
         flatShading: true
     });
-
-    return new THREE.Mesh(geometry, material);
+    let mesh = new THREE.Mesh(geometry, material);
+    return mesh
 }
 
 models.createCircle = function (
@@ -399,6 +399,8 @@ models.createCircle = function (
     const material = new THREE.MeshStandardMaterial({color:color});
     const circle = new THREE.Mesh(geometry,material);
     circle.position.copy(pos)
+    circle.receiveShadow = true;
+    circle.castShadow = true;
     scene.add(circle)
     if (world) {app.phys.addToMeshACC(circle,world,phys)}
 }
@@ -416,6 +418,8 @@ models.createCube = function (
     const material = new THREE.MeshStandardMaterial({color:color});
     const cube = new THREE.Mesh(geometry,material);
     cube.position.copy(pos)
+    cube.receiveShadow = true;
+    cube.castShadow = true;
     scene.add(cube)
     if (world) {app.phys.addToMeshACC(cube,world,phys)}
 }
@@ -671,30 +675,6 @@ models.createPond = function (
     const segments = 16;
     const waterGeometry = new THREE.PlaneGeometry(width, height, segments, segments);
 
-    // Reflector (mild reflection)
-    const reflector = new Reflector(waterGeometry.clone(), {
-        textureWidth: 128,
-        textureHeight: 128,
-        color: 0x555555,
-        clipBias: 0.003,
-        recursion: 1,
-        side: THREE.DoubleSide,
-        flatShading: true,
-        textureWidth:128,
-        textureHeight:128,
-    });
-
-    reflector.material.opacity = 0.2;
-    reflector.material.transparent = true;
-
-    reflector.frustrumCulled = false;
-    reflector.rotation.x = -Math.PI / 2;
-    reflector.position.copy(pos);
-    reflector.position.y -= 0.21;
-    reflector.material.transparent = true;
-    reflector.material.opacity = 0.1;
-    //pond.add(reflector);
-
     // Transparent water surface with blue tint
     const waterMaterial = new THREE.MeshBasicMaterial({
         color: waterColor,
@@ -726,7 +706,6 @@ models.createPond = function (
     pondBottom.position.y -= 0.5;
     pond.add(pondBottom);
 
-    //reflector.renderOrder = 1;
     //waterMesh.renderOrder = 2;
 
     // Shared wave animation logic
@@ -734,18 +713,12 @@ models.createPond = function (
     const frequency = 0.5;
     const startTime = Date.now();
 
-    reflector.castShadow = false;
-    reflector.receiveShadow = false;
     waterMesh.castShadow = false;
     waterMesh.receiveShadow = false;
 
     function update() {
         if (!player.pointerlock) return;
         const camPos = player.pointerlock.object.position.clone();
-        const distance = pond.position.distanceTo(camPos);
-        if (distance > 30) {reflector.visible = false; return;} 
-
-        reflector.visible = true;
 
         const time = (Date.now() - startTime) * 0.001;
         const updateWaves = (geometry) => {
@@ -760,7 +733,6 @@ models.createPond = function (
             geometry.computeVertexNormals();
         };
 
-        updateWaves(reflector.geometry);
         updateWaves(waterMesh.geometry);
     }
     const x = pos.x, z = pos.z, w = width / 2, h = height / 2;

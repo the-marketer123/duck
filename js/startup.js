@@ -587,12 +587,12 @@ app.rend.createSky = function (angle, scene, prevsky = undefined) {
     return { sky, dirLight, hemiLight, update };
  };
 
-app.rend.addShadow = function(obj,ignore=undefined){
+app.rend.addShadow = function(obj,ignore=undefined,cast=true,receive=true){
     if (ignore !== undefined){for (let i of ignore){if (obj.userData.id !== undefined && obj.userData.id == i) return;}}
 
     if (obj.isMesh) {
-        obj.castShadow = true;
-        obj.receiveShadow = true;
+        obj.castShadow = cast;
+        obj.receiveShadow = receive;
     }
     obj.children.forEach(child => {
         app.rend.addShadow(child,ignore);

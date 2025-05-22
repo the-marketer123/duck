@@ -127,7 +127,7 @@ function draw() {
     skybox.update(camera.position)
 
     let clock = new THREE.Clock;
-    let delta =  1 / clock.getDelta(); // Seconds since last frame
+    let delta =  1 - clock.getDelta(); // Seconds since last frame
     world.timestep = delta;
 
 }

@@ -125,6 +125,11 @@ function draw() {
     prevTOD = TOD
     app.user.update()
     skybox.update(camera.position)
+
+    let clock = new THREE.Clock;
+    let delta = clock.getDelta(); // Seconds since last frame
+    world.timestep = delta;
+
 }
 draw();
 app.ui.recenter();

@@ -18,6 +18,7 @@ const player = {
         
         if (this.physBody == undefined) return;
         let delta = this.clock.getDelta(); // Seconds since last frame
+        delta = 1;
 
         let cosYaw = Math.cos(this.yaw);
         let sinYaw = Math.sin(this.yaw);

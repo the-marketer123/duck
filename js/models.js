@@ -27,7 +27,9 @@ models.createDuck = function(
     const body2Geometry = new THREE.BoxGeometry(1, 1, 3);
     const bodyMaterial = new THREE.MeshStandardMaterial({ color: bodycolor });
     const body1 = new THREE.Mesh(body1Geometry, bodyMaterial);
+    body1.userData.noClipCamera = true;
     const body2 = new THREE.Mesh(body2Geometry, bodyMaterial);
+    body2.userData.noClipCamera = true;
     body1.position.set(0, 0.5, -0.125);
     body2.position.set(0, 0.5, -0.25);
     bodyGroup.add(body1);
@@ -37,6 +39,7 @@ models.createDuck = function(
     const tailGeometry = new THREE.BoxGeometry(0.75, 0.3, 1.5);
     const tailMaterial = new THREE.MeshStandardMaterial({ color: tailcolor });
     const tail = new THREE.Mesh(tailGeometry, tailMaterial);
+    tail.userData.noClipCamera = true;
     tail.rotation.set(Math.PI / 4, 0, 0);
     tail.position.set(0, 0.75, -1.75);
     bodyGroup.add(tail);
@@ -48,6 +51,7 @@ models.createDuck = function(
     leftWingGroup.position.set(-0.775, 1.0, 0); // Top of wing root
 
     const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+    leftWing.userData.noClipCamera = true;
     leftWing.position.set(-0.5, -0.05, 0); // Shift to hinge at top inner edge
     leftWingGroup.add(leftWing);
     bodyGroup.add(leftWingGroup);
@@ -57,6 +61,7 @@ models.createDuck = function(
     rightWingGroup.position.set(0.775, 1.0, 0);
 
     const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
+    rightWing.userData.noClipCamera = true;
     rightWing.position.set(0.5, -0.05, 0); // Opposite direction
     rightWingGroup.add(rightWing);
     bodyGroup.add(rightWingGroup);
@@ -69,6 +74,7 @@ models.createDuck = function(
     const headGeometry = new THREE.BoxGeometry(0.8, 0.9, 0.9);
     const headMaterial = new THREE.MeshStandardMaterial({ color: headcolor });
     const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.userData.noClipCamera = true;
     head.position.set(0, 1.75, 1.09);
     headGroup.add(head);
 
@@ -76,6 +82,7 @@ models.createDuck = function(
     const neckGeometry = new THREE.BoxGeometry(0.5, 1.5, 0.5);
     const neckMaterial = new THREE.MeshStandardMaterial({ color: neckcolor });
     const neck = new THREE.Mesh(neckGeometry, neckMaterial);
+    neck.userData.noClipCamera = true;
     neck.position.set(0, 1.25, 0.9);
     headGroup.add(neck);
 
@@ -83,6 +90,7 @@ models.createDuck = function(
     const beakGeometry = new THREE.BoxGeometry(0.4, 0.2, 0.5);
     const beakMaterial = new THREE.MeshStandardMaterial({ color: beakcolor });
     const beak = new THREE.Mesh(beakGeometry, beakMaterial);
+    beak.userData.noClipCamera = true;
     beak.position.set(0, 1.5, 1.7);
     headGroup.add(beak);
 
@@ -90,11 +98,13 @@ models.createDuck = function(
     const eyeGeometry = new THREE.BoxGeometry(0.25, 0.25, 0.25);
     const eyeMaterial = new THREE.MeshStandardMaterial({ color: eyecolor });
     const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.userData.noClipCamera = true;
     leftEye.position.set(0.25, 1.85, 1.5);
     leftEye.userData.id = 'eye'
     headGroup.add(leftEye);
 
     const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.userData.noClipCamera = true;
     rightEye.position.set(-0.25, 1.85, 1.5);
     rightEye.userData.id = 'eye'
     headGroup.add(rightEye);
@@ -102,12 +112,15 @@ models.createDuck = function(
     //Pupils
     const pupilGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
     const pupilMaterial = new THREE.MeshStandardMaterial({ color: pupilcolor });
+
     const leftpupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+    leftpupil.userData.noClipCamera = true;
     leftpupil.position.set(0.3, 1.85, 1.6);
     leftpupil.userData.id = 'eye'
     headGroup.add(leftpupil);
 
     const rightpupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+    rightpupil.userData.noClipCamera = true;
     rightpupil.position.set(-0.3, 1.85, 1.6);
     rightpupil.userData.id = 'eye'
     headGroup.add(rightpupil);
@@ -120,10 +133,12 @@ models.createDuck = function(
     const legGeometry = new THREE.BoxGeometry(0.2, 0.5, 0.2);
     const legMaterial = new THREE.MeshStandardMaterial({ color: legcolor });
     const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    leftLeg.userData.noClipCamera = true;
     leftLeg.position.set(-0.4, -0.4, 0);
     leftLimb.add(leftLeg);
 
     const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    rightLeg.userData.noClipCamera = true;
     rightLeg.position.set(0.4, -0.4, 0);
     rightLimb.add(rightLeg);
 
@@ -131,10 +146,12 @@ models.createDuck = function(
     const footGeometry = new THREE.BoxGeometry(0.5, 0.1, 0.5);
     const footMaterial = new THREE.MeshStandardMaterial({ color: footcolor });
     const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+    leftFoot.userData.noClipCamera = true;
     leftFoot.position.set(-0.4, -0.7, 0.2);
     leftLimb.add(leftFoot);
 
     const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
+    rightFoot.userData.noClipCamera = true;
     rightFoot.position.set(0.4, -0.7, 0.2);
     rightLimb.add(rightFoot);
     
@@ -181,11 +198,12 @@ models.createDuck = function(
                 target.bodyGroup.z = Math.sin(time) * 0.0075;
             }
             if (state === "fly") {
-                leftWing.rotation.z = 90 * Math.PI/180
-                rightWing.rotation.z = 90 * Math.PI/180
-                leftWing.rotation.y = 90 * Math.PI/180
-                rightWing.rotation.y = 90 * Math.PI/180
-                leftWing.position.x
+                leftWing.rotation.z = 90 * Math.PI/180;
+                rightWing.rotation.z = 90 * Math.PI/180;
+                leftWing.rotation.y = 90 * Math.PI/180;
+                rightWing.rotation.y = 90 * Math.PI/180;
+                leftWing.position.x = -0.5;
+                rightWing.position.x = 0.5;
                 target.leftWingGroup.z  = Math.sin(time * 5) * 1.0;
                 target.rightWingGroup.z = Math.sin(time * 5 + Math.PI) * 1.0;
                 target.leftLimb.x  = -1.0; // legs fold back
@@ -193,10 +211,12 @@ models.createDuck = function(
                 target.bodyGroup.z = Math.sin(time) * 0.1;
                 target.tail.z      = Math.sin(time * 1.5) * 0.1;
             } else {
-                leftWing.rotation.z = 0
-                rightWing.rotation.z = 0
-                leftWing.rotation.y = 0
-                rightWing.rotation.y = 0
+                leftWing.rotation.z = 0;
+                rightWing.rotation.z = 0;
+                leftWing.rotation.y = 0;
+                rightWing.rotation.y = 0;
+                leftWing.position.x = 0;
+                rightWing.position.x = 0;
             }
 
             // Interpolate
@@ -225,6 +245,7 @@ models.createDuck = function(
 
     return duck;
 }
+
 models.createDock = function (
     x,
     y,

@@ -64,7 +64,7 @@ window.loadMap = function(scene,world,eventQueue,player) {
         models.createPond(world, new THREE.Vector3(0,2,0), new THREE.Quaternion(0, 0, 0, 1),50,100)
     );
     ponds.forEach(p=>{scene.add(p)})  
-    app.ui.GUIbutton(undefined,40,60,0,5,-10,10,'test',function(){console.log('wsp')})
+    app.ui.GUIbutton(undefined,40,60,0,5,-10,10,'test',function(){app.ducks.createtestDuck(scene,new THREE.Vector3(0,-1,0))})
 
     async function update() {
         ponds.forEach(p=>{
@@ -239,8 +239,8 @@ app.ducks.createtestDuck = function (scene, pos) {
     duck.position.copy(pos);
     scene.add(duck);
 
-    let speed = 10; // horizontal speed
-    let verticalSpeed = 3.0; // how fast it adjusts to player's Y
+    let speed = 10 + (Math.random() * 2) - (Math.random() * 2); // horizontal speed
+    let verticalSpeed = 4 + (Math.random() * 2) - (Math.random() * 2); // how fast it adjusts to player's Y
     let direction = new THREE.Vector3(
         Math.random() * 2 - 1,
         0,
@@ -262,7 +262,8 @@ app.ducks.createtestDuck = function (scene, pos) {
                 this.anim = 'walk'
             }
 
-            const center = player.body.position;
+            const center = player.body.position.clone();
+            center.y -= 0.5
             const pos = this.model.position;
 
             // Smoothly adjust to player's Y
@@ -272,18 +273,7 @@ app.ducks.createtestDuck = function (scene, pos) {
                 pos.y += THREE.MathUtils.clamp(dy, -maxStep, maxStep);
             }
 
-            // Bounds in XZ around player
-            const bounds = {
-                minX: center.x - 15,
-                maxX: center.x + 15,
-                minZ: center.z - 15,
-                maxZ: center.z + 15
-            };
-
-            // Check if inside XZ bounds
-            const insideBounds =
-                pos.x >= bounds.minX && pos.x <= bounds.maxX &&
-                pos.z >= bounds.minZ && pos.z <= bounds.maxZ;
+            const insideBounds = this.model.position.distanceTo(player.body.position) < 15;
 
             if (!insideBounds || dy > 0.1 || dy < -0.1) {
                 // Return to center
@@ -308,20 +298,11 @@ app.ducks.createtestDuck = function (scene, pos) {
             // Rotate to face movement
             if (this.direction.lengthSq() > 0.0001) {
                 let target = new THREE.Vector3().copy(pos).add(this.direction);
-                target.y = player.body.position.y
-                if (this.returning)target = player.body.position.clone()
+                target.y = center.y
+                if (this.returning)target = center.clone()
                 this.model.lookAt(target);
             }
 
-            // Bounce off edges (XZ only) if not returning
-            if (!this.returning) {
-                if (pos.x < bounds.minX || pos.x > bounds.maxX) {
-                    this.direction.x *= -1;
-                }
-                if (pos.z < bounds.minZ || pos.z > bounds.maxZ) {
-                    this.direction.z *= -1;
-                }
-            }
             this.model.animation.update(this.anim);
 
         }

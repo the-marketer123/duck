@@ -116,12 +116,22 @@ const player = {
         
         for (let i = 0; i < intersects.length; i++) {
             const hit = intersects[i];
-            if (hit.distance < baseRadius && !this.body.children.includes(hit.object)) {
-                radius = hit.distance - 0.1; // just in front of the hit point
+            const obj = hit.object;
+
+            // Ignore parts of the player model
+            if (this.body.children.includes(obj)) continue;
+
+            // Skip objects that allow the camera through
+            if (obj.userData && obj.userData.noClipCamera) continue;
+
+            // Obstruction found
+            if (hit.distance < baseRadius) {
+                radius = hit.distance - 0.1; // Adjust camera to just in front
                 clipped = true;
                 break;
             }
         }
+
         
         if (radius < 0.5) radius = 0.5; // prevent camera from going inside the player
         
@@ -232,90 +242,4 @@ const player = {
 }
 window.player = player;
 //export default player;
-/*app.ducks.createtestDuck = function (scene, pos) {
-    let duck = models.createDuck();
-    duck.position.copy(pos);
-    scene.add(duck);
 
-    let speed = 10; // horizontal speed
-    let verticalSpeed = 3.0; // how fast it adjusts to player's Y
-    let direction = new THREE.Vector3(
-        Math.random() * 2 - 1,
-        0,
-        Math.random() * 2 - 1
-    ).normalize();
-
-    let object = {
-        model: duck,
-        anim: 'idle',
-        direction: direction,
-        speed: speed,
-        verticalSpeed: verticalSpeed,
-        returning: false,
-
-        update: function (delta) {
-            if (!delta) return;
-
-            this.model.animation.update(this.anim);
-
-            const center = player.body.position;
-            const pos = this.model.position;
-
-            // Smoothly adjust to player's Y
-            let dy = center.y - pos.y;
-            if (Math.abs(dy) > 0.01) {
-                let maxStep = this.verticalSpeed * delta;
-                pos.y += THREE.MathUtils.clamp(dy, -maxStep, maxStep);
-            }
-
-            // Bounds in XZ around player
-            const bounds = {
-                minX: center.x - 15,
-                maxX: center.x + 15,
-                minZ: center.z - 15,
-                maxZ: center.z + 15
-            };
-
-            // Check if inside XZ bounds
-            const insideBounds =
-                pos.x >= bounds.minX && pos.x <= bounds.maxX &&
-                pos.z >= bounds.minZ && pos.z <= bounds.maxZ;
-
-            if (!insideBounds) {
-                // Return to center
-                this.returning = true;
-                this.direction.subVectors(center, pos).setY(0).normalize();
-            } else if (this.returning) {
-                // Re-entered bounds
-                this.returning = false;
-                this.direction.set(
-                    Math.random() * 2 - 1,
-                    0,
-                    Math.random() * 2 - 1
-                ).normalize();
-            }
-
-            // Move in current direction
-            pos.addScaledVector(this.direction, this.speed * delta);
-
-            // Rotate to face movement
-            if (this.direction.lengthSq() > 0.0001) {
-                const target = new THREE.Vector3().copy(pos).add(this.direction);
-                this.model.lookAt(target);
-            }
-
-            // Bounce off edges (XZ only) if not returning
-            if (!this.returning) {
-                if (pos.x < bounds.minX || pos.x > bounds.maxX) {
-                    this.direction.x *= -1;
-                }
-                if (pos.z < bounds.minZ || pos.z > bounds.maxZ) {
-                    this.direction.z *= -1;
-                }
-            }
-        }
-    };
-
-    app.ducks.list.push(object);
-    return object;
-}; */

@@ -101,44 +101,48 @@ window.addEventListener("resize", () => {
 
 // loop
 let clock = new THREE.Clock;
+const fixedTimeStep = 1 / 60; // 60 FPS
+let accumulator = 0;
+
 function draw() {
-    map.update()
-    player.update()
     let delta = clock.getDelta()
-    app.ducks.list.forEach(b=>b.update(delta))
+    accumulator += delta
 
-    if (app.user.keysHeld.j && ducks.length > 0){
-        ducks.forEach(b=>{b.anim = 'walk'})
-    } else if (ducks.length > 0) {
-        ducks.forEach(b=>{b.anim = 'idle'})
-    }
+    if (accumulator >= fixedTimeStep) {
+        accumulator -= fixedTimeStep
+        map.update()
+        player.update(1/60)
+        app.ducks.list.forEach(b=>b.update(1/60))
 
-    if (app.user.keysPressed.k && main_menu_ground.visible) {
-        app.ui.erase()
-        main_menu_ground.visible = false
-    } else if (!main_menu_ground.visible && app.user.keysPressed.k) {   
-        main_menu_ground.visible = true
-        main_menu()    
-    }
-    if (player.body && app.user.keysPressed.n){
-        player.body.position.z++
-    }
+        if (app.user.keysHeld.j && ducks.length > 0){
+            ducks.forEach(b=>{b.anim = 'walk'})
+        } else if (ducks.length > 0) {
+            ducks.forEach(b=>{b.anim = 'idle'})
+        }
 
-    app.phys.update(world,delta)
-    app.ui.update(player)
-    statsui.update();
-    renderer.render(scene, camera);
+        if (app.user.keysPressed.k && main_menu_ground.visible) {
+            app.ui.erase()
+            main_menu_ground.visible = false
+        } else if (!main_menu_ground.visible && app.user.keysPressed.k) {   
+            main_menu_ground.visible = true
+            main_menu()    
+        }
+        if (player.body && app.user.keysPressed.n){
+            player.body.position.z++
+        }
+
+        app.phys.update(world,1/60)
+        app.ui.update(player)
+        statsui.update();
+        renderer.render(scene, camera);
+        if (prevTOD !== TOD){
+            skybox = app.rend.createSky(TOD, scene, skybox);
+        }
+        prevTOD = TOD
+        app.user.update()
+        skybox.update(camera.position)
+    }
     requestAnimationFrame(draw);
-    if (prevTOD !== TOD){
-        skybox = app.rend.createSky(TOD, scene, skybox);
-    }
-    prevTOD = TOD
-    app.user.update()
-    skybox.update(camera.position)
-
-    //let delta = clock.getDelta(); // Seconds since last frame
-    //world.timestep = delta;
-
 }
 draw();
 app.ui.recenter();

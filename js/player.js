@@ -14,10 +14,10 @@ const player = {
     pointerlock:undefined,
     walkspeedBUFF: 1,
     jumpspeedBUFF: 1,
-    update:function(){
+    update:function(delta){
         
         if (this.physBody == undefined) return;
-        let delta = this.clock.getDelta(); // Seconds since last frame
+        //let delta = this.clock.getDelta(); // Seconds since last frame
         //delta = 1;
 
         let cosYaw = Math.cos(this.yaw);

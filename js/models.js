@@ -41,16 +41,27 @@ models.createDuck = function(
     tail.position.set(0, 0.75, -1.75);
     bodyGroup.add(tail);
 
-    // Wings
+    // Wings (rotating from shoulder edge)
     const wingGeometry = new THREE.BoxGeometry(0.1, 0.5, 1);
-    const wingMaterial = new THREE.MeshStandardMaterial({ color: wingcolor });
+    const wingMaterial = new THREE.MeshStandardMaterial({ color: wingcolor });// LEFT WING
+    const leftWingGroup = new THREE.Group();
+    leftWingGroup.position.set(-0.775, 1.0, 0); // Top of wing root
+
     const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
-    leftWing.position.set(-0.775, 0.5, 0);
-    bodyGroup.add(leftWing);
+    leftWing.position.set(-0.5, -0.05, 0); // Shift to hinge at top inner edge
+    leftWingGroup.add(leftWing);
+    bodyGroup.add(leftWingGroup);
+
+    // RIGHT WING
+    const rightWingGroup = new THREE.Group();
+    rightWingGroup.position.set(0.775, 1.0, 0);
 
     const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
-    rightWing.position.set(0.775, 0.5, 0);
-    bodyGroup.add(rightWing);
+    rightWing.position.set(0.5, -0.05, 0); // Opposite direction
+    rightWingGroup.add(rightWing);
+    bodyGroup.add(rightWingGroup);
+
+
 
     // Head
     let headGroup = new THREE.Group();
@@ -132,32 +143,33 @@ models.createDuck = function(
     let animation = {
         // Current values to interpolate from
         current: {
+            leftWingGroup: { z: 0 },
+            rightWingGroup: { z: 0 },
             leftLimb: { x: 0 },
             rightLimb: { x: 0 },
             headGroup: { x: 0 },
             bodyGroup: { z: 0 },
             tail: { z: 0 }
         },
-    
-        // Common easing function
-        lerp: function(start, end, t) {
+
+        lerp(start, end, t) {
             return start + (end - start) * t;
         },
-    
-        // Call this every frame and pass the desired state
-        update: function(state) {
+
+        update(state) {
             const time = Date.now() * 0.005;
-            const easing = 0.1; // Controls speed of easing
-    
-            // Compute target values based on the state
+            const easing = 0.1;
+
             let target = {
+                leftWingGroup: { z: 0 },
+                rightWingGroup: { z: 0 },
                 leftLimb: { x: 0 },
                 rightLimb: { x: 0 },
                 headGroup: { x: 0 },
                 bodyGroup: { z: 0 },
                 tail: { z: 0 }
             };
-    
+
             if (state === "walk") {
                 target.leftLimb.x  = (Math.sin(time) *  0.75) + 0.25;
                 target.rightLimb.x = (Math.sin(time) * -0.75) + 0.25;
@@ -168,22 +180,47 @@ models.createDuck = function(
                 target.headGroup.x = Math.sin(time) * 0.0075;
                 target.bodyGroup.z = Math.sin(time) * 0.0075;
             }
-    
-            // Interpolate and apply
-            animation.current.leftLimb.x  = animation.lerp(animation.current.leftLimb.x,  target.leftLimb.x,  easing);
-            animation.current.rightLimb.x = animation.lerp(animation.current.rightLimb.x, target.rightLimb.x, easing);
-            animation.current.headGroup.x = animation.lerp(animation.current.headGroup.x, target.headGroup.x, easing);
-            animation.current.bodyGroup.z = animation.lerp(animation.current.bodyGroup.z, target.bodyGroup.z, easing);
-            animation.current.tail.z      = animation.lerp(animation.current.tail.z,      target.tail.z,      easing);
-    
-            // Apply to the actual objects
+            if (state === "fly") {
+                leftWing.rotation.z = 90 * Math.PI/180
+                rightWing.rotation.z = 90 * Math.PI/180
+                leftWing.rotation.y = 90 * Math.PI/180
+                rightWing.rotation.y = 90 * Math.PI/180
+                leftWing.position.x
+                target.leftWingGroup.z  = Math.sin(time * 5) * 1.0;
+                target.rightWingGroup.z = Math.sin(time * 5 + Math.PI) * 1.0;
+                target.leftLimb.x  = -1.0; // legs fold back
+                target.rightLimb.x = -1.0;
+                target.bodyGroup.z = Math.sin(time) * 0.1;
+                target.tail.z      = Math.sin(time * 1.5) * 0.1;
+            } else {
+                leftWing.rotation.z = 0
+                rightWing.rotation.z = 0
+                leftWing.rotation.y = 0
+                rightWing.rotation.y = 0
+            }
+
+            // Interpolate
+            for (let part in target) {
+                for (let axis in target[part]) {
+                    animation.current[part][axis] = this.lerp(animation.current[part][axis], target[part][axis], easing);
+                }
+            }
+
+            // Apply to objects
+            animation.current.leftWingGroup.z  = animation.lerp(animation.current.leftWingGroup.z,  target.leftWingGroup.z, easing);
+            animation.current.rightWingGroup.z = animation.lerp(animation.current.rightWingGroup.z, target.rightWingGroup.z, easing);
+
+            leftWingGroup.rotation.z  = animation.current.leftWingGroup.z;
+            rightWingGroup.rotation.z = animation.current.rightWingGroup.z;
+
             leftLimb.rotation.x   = animation.current.leftLimb.x;
             rightLimb.rotation.x  = animation.current.rightLimb.x;
             headGroup.rotation.x  = animation.current.headGroup.x;
             bodyGroup.rotation.z  = animation.current.bodyGroup.z;
             tail.rotation.z       = animation.current.tail.z;
         }
-    }        
+    };
+
     duck.animation = animation;
 
     return duck;
@@ -393,14 +430,17 @@ models.createCircle = function (
     pos=new THREE.Vector3(0,0,0),
     color=0x0000ff,
     radius=5,
-    height=1
+    height=1,
+    shadow=true,
 ){
     const geometry = new THREE.CylinderGeometry(radius,radius,height,64);
     const material = new THREE.MeshStandardMaterial({color:color});
     const circle = new THREE.Mesh(geometry,material);
     circle.position.copy(pos)
-    circle.receiveShadow = true;
-    circle.castShadow = true;
+    if (shadow){
+        circle.receiveShadow = true;
+        circle.castShadow = true;
+    }
     scene.add(circle)
     if (world) {app.phys.addToMeshACC(circle,world,phys)}
 }
@@ -413,13 +453,16 @@ models.createCube = function (
     width=5,
     length=5,
     height=5,
+    shadow=true,
 ){
     const geometry = new THREE.BoxGeometry(width,length,height);
     const material = new THREE.MeshStandardMaterial({color:color});
     const cube = new THREE.Mesh(geometry,material);
     cube.position.copy(pos)
-    cube.receiveShadow = true;
-    cube.castShadow = true;
+    if (shadow){
+        cube.receiveShadow = true;
+        cube.castShadow = true;
+    }
     scene.add(cube)
     if (world) {app.phys.addToMeshACC(cube,world,phys)}
 }
@@ -483,13 +526,13 @@ models.createBase =async function(
     player.scene.add(base)
     
     
-    models.createCircle(base,player.world,false,new THREE.Vector3(50,0.1,0),0x4444ff,15)
-    models.createCircle(base,player.world,false,new THREE.Vector3(50,0.2,0),0xffffff,12)
+    models.createCircle(base,player.world,false,new THREE.Vector3(50,0.1,0),0x4444ff,15,1,false)
+    models.createCircle(base,player.world,false,new THREE.Vector3(50,0.2,0),0xffffff,12,1,false)
     
-    models.createCube(base,player.world,true,new THREE.Vector3(48,5,-2),0x0000ff,3,3,3)
-    models.createCube(base,player.world,true,new THREE.Vector3(48,5,2),0xff0000,3,3,3)
-    models.createCube(base,player.world,true,new THREE.Vector3(52,5,0),0x00ff00,3,3,3)
-    models.createCube(base,player.world,true,new THREE.Vector3(50,8,0),0xffffff,3,3,3)
+    models.createCube(base,player.world,true,new THREE.Vector3(48,6,-2),0x0000ff,3,3,3,false)
+    models.createCube(base,player.world,true,new THREE.Vector3(48,6,2),0xff0000,3,3,3,false)
+    models.createCube(base,player.world,true,new THREE.Vector3(52,6,0),0x00ff00,3,3,3,false)
+    models.createCube(base,player.world,true,new THREE.Vector3(50,10,0),0xffffff,3,3,3,false)
     dat = app.dat
     
     async function update(player){

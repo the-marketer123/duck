@@ -40,6 +40,11 @@ function start () {
     app.ui.erase(false)
     main_menu_ground.visible = false
     player.create(new THREE.Vector3(0, 4, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, pointerlock, 'default');
+    app.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
+    app.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
+    app.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
+    app.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
+    app.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
 }
 // menu
 let ducks = []
@@ -95,10 +100,12 @@ window.addEventListener("resize", () => {
 });
 
 // loop
+let clock = new THREE.Clock;
 function draw() {
     map.update()
     player.update()
-    app.ducks.list.forEach(b=>b.update())
+    let delta = clock.getDelta()
+    app.ducks.list.forEach(b=>b.update(delta))
 
     if (app.user.keysHeld.j && ducks.length > 0){
         ducks.forEach(b=>{b.anim = 'walk'})
@@ -113,8 +120,11 @@ function draw() {
         main_menu_ground.visible = true
         main_menu()    
     }
+    if (player.body && app.user.keysPressed.n){
+        player.body.position.z++
+    }
 
-    app.phys.update(world)
+    app.phys.update(world,delta)
     app.ui.update(player)
     statsui.update();
     renderer.render(scene, camera);
@@ -126,9 +136,8 @@ function draw() {
     app.user.update()
     skybox.update(camera.position)
 
-    let clock = new THREE.Clock;
-    let delta = 1.05 * clock.getDelta(); // Seconds since last frame
-    world.timestep = delta;
+    //let delta = clock.getDelta(); // Seconds since last frame
+    //world.timestep = delta;
 
 }
 draw();

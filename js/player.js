@@ -13,10 +13,10 @@ const player = {
     jumpSpeed:0.3,
     pointerlock:undefined,
     walkspeedBUFF: 1,
-    jumpspeedBUFF: 1,
+    jumpspeedBUFF: 3,
     update:function(delta){
         
-        if (this.physBody == undefined) return;
+        if (this.physBody == undefined || app.scene !== 'play') return;
         //let delta = this.clock.getDelta(); // Seconds since last frame
         //delta = 1;
 

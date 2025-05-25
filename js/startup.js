@@ -27,19 +27,16 @@ window.FontLoader = fontload.FontLoader
 let stats = await import('three/addons/libs/stats.module.js');
 let Stats = stats.default
 
-window.app = {
-    rend:{},
-    phys:{},
-    ui:{},
-    ducks:{},
-    user:{},
-    canvas:{},
-    items:{},
-    dat:{},
-    gui:{},
-    game:{
-        ducks:{},
-        nests:{},
+window.app = {//basically the framework - you need to do something, log the part of 'app' containing it to get the fucntion for it, or look below - models held seperately
+    rend:{}, //rendering - 3d
+    phys:{}, //physics
+    ui:{}, // gui + ui
+    user:{}, // keyboard controls & such
+    items:{}, // in-game item - spawning, handling, updating
+    dat:{}, // player data
+    game:{ // game fucntions (i shoudl probably put items in here..)
+        ducks:{}, //duck models + spawning + updates
+        nests:{}, // nests & stuff
 
     },
 };
@@ -342,7 +339,6 @@ app.game.nests.createBasic=async function(scene,world,pos,facing,nestNum = 0,dat
             ]
         }
     } 
-    console.log(dat)
     info = dat.nests[nestNum];
 
     let nest = await models.createNest(world,scene,info.lvl,pos,facing,price,font);

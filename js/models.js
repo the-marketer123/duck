@@ -567,9 +567,6 @@ models.createBase =async function(
                 reject
             );
         });
-        //for (let i = 0;i<(player.default ? 25 : dat.nests.length);i++){
-        //    await models.createNest(player.world,base,(player.default ? (i<6?1:0) : dat.nests[i].lvl),new THREE.Vector3(100 + (-1*(i-12)*(i-12)*2/6),1,4*i - 50),new THREE.Vector3(50,0,0),Math.round(5*(2**i)),font);
-        //}
     }
     await update(player)
     return({base,update})

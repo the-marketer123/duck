@@ -19,6 +19,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.localClippingEnabled = true;
 renderer.outputEncoding = THREE.LinearEncoding;
 renderer.toneMapping = THREE.NoToneMapping;
+app.scene = 'menu'
 
 
 
@@ -31,8 +32,9 @@ uiCanvas.addEventListener('click', function() {
     pointerlock.lock();
 });
 scene.add(camera);
+scene.add(menucamera);
 
-let world = new RAPIER.World({x:0,y:-9.7,z:0})
+let world = new RAPIER.World({x:0,y:-97,z:0})
 player.create(new THREE.Vector3(0, 4, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, pointerlock, 'default');
 
 
@@ -41,12 +43,20 @@ function start () {
     pointerlock.lock();
     app.ui.erase(false)
     main_menu_ground.visible = false
-    //player.create(new THREE.Vector3(0, 4, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, pointerlock, 'default');
+    app.scene = 'play'
     app.game.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
     app.game.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
     app.game.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
     app.game.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
     app.game.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
+    player.deltaYaw = 0;
+    player.deltaPitch = 0;
+}
+function returnToMenu () {
+    app.ui.erase()
+    main_menu_ground.visible = true
+    app.scene = 'menu'
+    main_menu()
 }
 // menu
 let ducks = []
@@ -77,8 +87,8 @@ let main_menu_ground = mm_back_setup()
 function main_menu (){
     TOD = 0
     main_menu_ground.visible = true
+    menucamera.position.set(0,493,0)
     camera.position.set(0,493,0)
-    //if (pointerlock) pointerlock.target.copy(camera.position); pointerlock.update(); camera.position.x+=0.01; //camera.position.y+=30;
     app.ui.text('fishing simulator',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.15},"Cal Sans",'75',0xff0000,25,false)
     app.ui.button('play',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.5},start,"Cal Sans",'25',0xff0000,25)
     app.ui.button('settings',{custom:true,mode:'center'},{custom:true,mode:'percent',offset:0.65},function(){console.log('settings')},"Cal Sans",'25',0xff0000,25)
@@ -97,7 +107,9 @@ window.addEventListener("resize", () => {
     uiCanvas.width = window.innerWidth
     uiCanvas.height = window.innerHeight
     camera.aspect = window.innerWidth / window.innerHeight;
+    menucamera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
+    menucamera.updateProjectionMatrix();
     renderer.setSize( window.innerWidth, window.innerHeight );
 });
 
@@ -136,10 +148,15 @@ function draw() {
         app.phys.update(world,1/60)
         app.ui.update(player)
         statsui.update();
-        renderer.render(scene, camera);
+        if (app.scene === 'menu'){
+            renderer.render(scene,menucamera)
+        } else {
+            renderer.render(scene,camera)
+        }        
         if (prevTOD !== TOD){
             skybox = app.rend.createSky(TOD, scene, skybox);
         }
+
         prevTOD = TOD
         app.user.update()
         skybox.update(camera.position)

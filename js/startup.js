@@ -37,6 +37,11 @@ window.app = {
     items:{},
     dat:{},
     gui:{},
+    game:{
+        ducks:{},
+        nests:{},
+
+    },
 };
 
 window.statsui = new Stats()
@@ -57,28 +62,41 @@ ui_ctx.clearRect(0, 0, uiCanvas.width, uiCanvas.height);
 
 // map
 window.__baseCreated = window.__baseCreated || false;
-window.loadMap = function(scene,world,eventQueue,player) {
+window.loadMap = async function(scene,world,eventQueue,player) {
     models.createGround(scene,world)
     let ponds = []
     ponds.push(
         models.createPond(world, new THREE.Vector3(0,2,0), new THREE.Quaternion(0, 0, 0, 1),50,100)
     );
     ponds.forEach(p=>{scene.add(p)})  
-    app.ui.GUIbutton(undefined,40,60,0,5,-10,10,'test',function(){app.ducks.createtestDuck(scene,new THREE.Vector3(0,-1,0))})
+    app.ui.GUIbutton(undefined,40,60,0,5,-10,10,'test',function(){app.game.ducks.createtestDuck(scene,new THREE.Vector3(0,-1,0))})
+    let dat = app.dat
+    const loader = new FontLoader();
+    const font = await new Promise((resolve, reject) => {
+        loader.load(
+            './font.json',
+            resolve,
+            undefined,
+            reject
+        );
+    });
+    if (app.dat.preexisting){
+        await models.createBase(player)
 
+        for (let i = 0;i<(player.default ? 25 : dat.nests.length);i++){
+            await app.game.nests.createBasic(player.world,player.scene,dat.nests[i].lvl,new THREE.Vector3(100 + (-1*(i-12)*(i-12)*2/6),1,4*i - 50),new THREE.Vector3(50,0,0),Math.round(5*(2**i)),font);
+        }    
+    } else {
+        await models.createBase({scene,world,default: true})
+        for (let i = 0;i<(player.default ? 25 : dat.nests.length);i++){
+            await app.game.nests.createBasic(scene,world,new THREE.Vector3(100 + (-1*(i-12)*(i-12)*2/6),1,4*i - 50),new THREE.Vector3(50,0,0),i,dat,Math.round(5*(2**i)),font);
+        }    
+    }
+    
     async function update() {
         ponds.forEach(p=>{
             p.update()
         })
-        if (!__baseCreated && player){
-            __baseCreated = true
-            if (app.dat.preexisting){
-                await models.createBase(player)
-            } else {
-                await models.createBase({scene,world,default: true})
-            }
-        }
-
     }
     return {update}
 
@@ -88,103 +106,103 @@ app.dat={
         preexisting:false,
         nests:[
             {
-                lvl:1,
+                lvl:1, duck:'N/A',
                 num:1,
             },
             {
-                lvl:1,
+                lvl:1, duck:'N/A',
                 num:2,
             },
             {
-                lvl:1,
+                lvl:1, duck:'N/A',
                 num:3,
             },
             {
-                lvl:1,
+                lvl:1, duck:'N/A',
                 num:4,
             },
             {
-                lvl:1,
+                lvl:1, duck:'N/A',
                 num:5,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:6,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:7,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:8,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:9,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:10,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:11,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:12,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:13,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:14,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:15,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:16,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:17,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:18,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:19,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:20,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:21,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:22,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:23,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:24,
             },
             {
-                lvl:0,
+                lvl:0, duck:'N/A',
                 num:25,
             },
 
@@ -218,9 +236,9 @@ app.dat={
     } 
 // items
 app.items.list = []
-// ducks
-app.ducks.list = [] // list of all living ducks
-app.ducks.createdebugDuck = function (scene,pos){
+// game stuff
+app.game.ducks.list = [] // list of all living ducks
+app.game.ducks.createdebugDuck = function (scene,pos){
     let duck = models.createDuck()
     duck.position.copy(pos)
     scene.add(duck)
@@ -231,10 +249,10 @@ app.ducks.createdebugDuck = function (scene,pos){
             this.model.animation.update(this.anim);
         }
     };
-    app.ducks.list.push(object)
+    app.game.ducks.list.push(object)
     return object
  }
-app.ducks.createtestDuck = function (scene, pos) {
+app.game.ducks.createtestDuck = function (scene, pos) {
     let duck = models.createDuck();
     duck.position.copy(pos);
     scene.add(duck);
@@ -308,10 +326,29 @@ app.ducks.createtestDuck = function (scene, pos) {
         }
     };
 
-    app.ducks.list.push(object);
+    app.game.ducks.list.push(object);
     return object;
 };
+app.game.nests.createBasic=async function(scene,world,pos,facing,nestNum = 0,dat=null,price,font){
+    let info;
+    if (dat === null){
+        dat = {
+            nests:[
+                {
+                    lvl:0, 
+                    duck:'N/A',
+                    num: nestNum,
+                }
+            ]
+        }
+    } 
+    console.log(dat)
+    info = dat.nests[nestNum];
 
+    let nest = await models.createNest(world,scene,info.lvl,pos,facing,price,font);
+    let model = nest.nest
+    let body = nest.physmesh
+}
 
 // user input
 app.user =(function(controls){

@@ -25,6 +25,7 @@ renderer.toneMapping = THREE.NoToneMapping;
 document.body.appendChild(renderer.domElement);
 
 let camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.01, 5000);
+let menucamera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.01, 5000);
 let pointerlock = new PointerLockControls(camera, uiCanvas)
 uiCanvas.addEventListener('click', function() {
     pointerlock.lock();
@@ -32,6 +33,7 @@ uiCanvas.addEventListener('click', function() {
 scene.add(camera);
 
 let world = new RAPIER.World({x:0,y:-9.7,z:0})
+player.create(new THREE.Vector3(0, 4, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, pointerlock, 'default');
 
 
 // setup
@@ -39,31 +41,31 @@ function start () {
     pointerlock.lock();
     app.ui.erase(false)
     main_menu_ground.visible = false
-    player.create(new THREE.Vector3(0, 4, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, pointerlock, 'default');
-    app.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
-    app.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
-    app.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
-    app.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
-    app.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
+    //player.create(new THREE.Vector3(0, 4, 0), new THREE.Quaternion(0, 0, 0, 1), scene, world, pointerlock, 'default');
+    app.game.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
+    app.game.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
+    app.game.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
+    app.game.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
+    app.game.ducks.createtestDuck(scene,new THREE.Vector3(0,0,0));
 }
 // menu
 let ducks = []
 function mm_back_setup() { // main menu background setup
     let group = new THREE.Group()
     
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(-3, 491,-9)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(-3, 491, -3)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 3, 491, -3)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 3, 491,-9)));
+    ducks.push(app.game.ducks.createdebugDuck(group,new THREE.Vector3(-3, 491,-9)));
+    ducks.push(app.game.ducks.createdebugDuck(group,new THREE.Vector3(-3, 491, -3)));
+    ducks.push(app.game.ducks.createdebugDuck(group,new THREE.Vector3( 3, 491, -3)));
+    ducks.push(app.game.ducks.createdebugDuck(group,new THREE.Vector3( 3, 491,-9)));
 
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 4, 491,-6)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -4, 491,-6)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 5, 491,-6)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -5, 491,-6)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( -7, 491,-4)));
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3(7, 491,-4)));
+    ducks.push(app.game.ducks.createdebugDuck(group,new THREE.Vector3( 4, 491,-6)));
+    ducks.push(app.game.ducks.createdebugDuck(group,new THREE.Vector3( -4, 491,-6)));
+    ducks.push(app.game.ducks.createdebugDuck(group,new THREE.Vector3( 5, 491,-6)));
+    ducks.push(app.game.ducks.createdebugDuck(group,new THREE.Vector3( -5, 491,-6)));
+    ducks.push(app.game.ducks.createdebugDuck(group,new THREE.Vector3( -7, 491,-4)));
+    ducks.push(app.game.ducks.createdebugDuck(group,new THREE.Vector3(7, 491,-4)));
 
-    ducks.push(app.ducks.createdebugDuck(group,new THREE.Vector3( 0, 491, -3)));
+    ducks.push(app.game.ducks.createdebugDuck(group,new THREE.Vector3( 0, 491, -3)));
     ducks.forEach(b=>b.model.lookAt(0,491,0))
 
     models.createGround(group,world,489.7)
@@ -86,7 +88,7 @@ function main_menu (){
 }
 main_menu()
 const eventQueue = new RAPIER.EventQueue(true);
-let map = loadMap(scene,world,eventQueue,player)
+let map = await loadMap(scene,world,eventQueue,player)
 
 //nessecary stuff
 window.addEventListener("resize", () => {
@@ -112,7 +114,7 @@ function draw() {
         accumulator -= fixedTimeStep
         map.update()
         player.update(1/60)
-        app.ducks.list.forEach(b=>b.update(1/60))
+        app.game.ducks.list.forEach(b=>b.update(1/60))
 
         if (app.user.keysHeld.j && ducks.length > 0){
             ducks.forEach(b=>{b.anim = 'walk'})

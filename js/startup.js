@@ -37,7 +37,6 @@ window.app = {//basically the framework - you need to do something, log the part
     game:{ // game fucntions (i shoudl probably put items in here..)
         ducks:{}, //duck models + spawning + updates
         nests:{}, // nests & stuff
-
     },
 };
 
@@ -254,8 +253,8 @@ app.game.ducks.createtestDuck = function (scene, pos) {
     duck.position.copy(pos);
     scene.add(duck);
 
-    let speed = 10 + (Math.random() * 2) - (Math.random() * 2); // horizontal speed
-    let verticalSpeed = 4 + (Math.random() * 2) - (Math.random() * 2); // how fast it adjusts to player's Y
+    let speed = 10 + (Math.random() * 2 - Math.random() * 2);
+    let verticalSpeed = 4 + (Math.random() * 2 - Math.random() * 2);
     let direction = new THREE.Vector3(
         Math.random() * 2 - 1,
         0,
@@ -265,67 +264,90 @@ app.game.ducks.createtestDuck = function (scene, pos) {
     let object = {
         model: duck,
         anim: 'idle',
-        direction: direction,
+        direction: direction.clone(),
         speed: speed,
         verticalSpeed: verticalSpeed,
-        returning: false,
+        returnMode: 'none',
 
         update: function (delta) {
             if (!delta) return;
 
-            if (this.direction.x !== 0 || this.direction.z !== 0){
-                this.anim = 'walk'
-            }
-
             const center = player.body.position.clone();
-            center.y -= 0.5
-            const pos = this.model.position;
+            center.y -= 0.5;
 
-            // Smoothly adjust to player's Y
-            let dy = center.y - pos.y;
-            if (Math.abs(dy) > 0.01) {
-                let maxStep = this.verticalSpeed * delta;
+            const pos = this.model.position;
+            const distanceXZ = Math.hypot(
+                pos.x - center.x,
+                pos.z - center.z
+            );
+
+            const dy = center.y - pos.y;
+            const needYFix = Math.abs(dy) > 0.1;
+            const outOfBounds = distanceXZ > 15;
+
+            // Smooth Y adjustment always happens if needed
+            if (needYFix) {
+                const maxStep = this.verticalSpeed * delta;
                 pos.y += THREE.MathUtils.clamp(dy, -maxStep, maxStep);
             }
-
-            const insideBounds = this.model.position.distanceTo(player.body.position) < 15;
-
-            if (!insideBounds || dy > 0.1 || dy < -0.1) {
-                // Return to center
-                this.returning = true;
-                this.direction.subVectors(center, pos).setY(0).normalize();
-            } else if (this.returning) {
-                // Re-entered bounds
-                this.returning = false;
+            if (this.returnMode === 'none' && outOfBounds){
                 this.direction.set(
                     Math.random() * 2 - 1,
                     0,
                     Math.random() * 2 - 1
                 ).normalize();
             }
-
-            if (dy > 0.1 || dy < -0.1){
-                this.anim = "fly"
+            // Determine movement mode
+            if (outOfBounds) {
+                this.returnMode = needYFix ? 'both' : 'xz';
+            } else {
+                // if only Y is wrong, just correct Y, keep moving in current dir
+                this.returnMode = needYFix ? 'y-only' : 'none';
             }
-            // Move in current direction
-            pos.addScaledVector(this.direction, this.speed * delta);
+            
 
-            // Rotate to face movement
-            if (this.direction.lengthSq() > 0.0001) {
-                let target = new THREE.Vector3().copy(pos).add(this.direction);
-                target.y = center.y
-                if (this.returning)target = center.clone()
-                this.model.lookAt(target);
+            // Animation state
+            if (needYFix) {
+                this.anim = 'fly';
+            } else if (this.returnMode === 'xz' || this.returnMode === 'both') {
+                this.anim = 'walk';
+            } else {
+                this.anim = 'idle';
             }
 
+            // Movement
+            switch (this.returnMode) {
+                case 'xz':
+                    this.direction.subVectors(center, pos).setY(0).normalize();
+                    this.model.lookAt(center);
+                    pos.addScaledVector(this.direction, this.speed * delta);
+                    break;
+
+                case 'both':
+                    this.direction.subVectors(center, pos).setY(0).normalize();
+                    this.model.lookAt(center);
+                    pos.addScaledVector(this.direction, this.speed * delta);
+                    break;
+
+                case 'y-only':
+                    // Only adjust Y, keep original random direction
+                    pos.addScaledVector(this.direction, this.speed * delta);
+                    break;
+
+                case 'none':
+                    // Fully idle, keep drifting in current direction
+                    pos.addScaledVector(this.direction, this.speed * delta);
+                    break;
+            }
             this.model.animation.update(this.anim);
-
         }
     };
 
     app.game.ducks.list.push(object);
     return object;
 };
+
+
 app.game.nests.createBasic=async function(scene,world,pos,facing,nestNum = 0,dat=null,price,font){
     let info;
     if (dat === null){

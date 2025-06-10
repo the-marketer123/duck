@@ -65,7 +65,7 @@ window.loadMap = async function(scene,world,eventQueue,player) {
         models.createPond(world, new THREE.Vector3(0,2,0), new THREE.Quaternion(0, 0, 0, 1),50,100)
     );
     ponds.forEach(p=>{scene.add(p)})  
-    app.ui.GUIbutton(undefined,40,60,0,5,-10,10,'test',function(){app.game.ducks.createtestDuck(scene,new THREE.Vector3(0,-1,0))})
+    app.ui.GUIbutton(undefined,40,60,0,5,-10,10,'test',function(){app.game.ducks.createtestDuck(scene,new THREE.Vector3(0,-1,0))},true)
     let dat = app.dat
     const loader = new FontLoader();
     const font = await new Promise((resolve, reject) => {
@@ -264,7 +264,8 @@ app.game.ducks.createtestDuck = function (scene, pos) {
     let object = {
         model: duck,
         anim: 'idle',
-        direction: direction.clone(),
+        dir: direction.clone(),
+        randomdir: direction.clone(),
         speed: speed,
         verticalSpeed: verticalSpeed,
         returnMode: 'none',
@@ -285,58 +286,67 @@ app.game.ducks.createtestDuck = function (scene, pos) {
             const needYFix = Math.abs(dy) > 0.1;
             const outOfBounds = distanceXZ > 15;
 
-            // Smooth Y adjustment always happens if needed
             if (needYFix) {
                 const maxStep = this.verticalSpeed * delta;
                 pos.y += THREE.MathUtils.clamp(dy, -maxStep, maxStep);
             }
-            if (this.returnMode === 'none' && outOfBounds){
-                this.direction.set(
+
+            if (outOfBounds) {
+                this.randomdir = new THREE.Vector3(
                     Math.random() * 2 - 1,
                     0,
                     Math.random() * 2 - 1
                 ).normalize();
-            }
-            // Determine movement mode
-            if (outOfBounds) {
                 this.returnMode = needYFix ? 'both' : 'xz';
             } else {
-                // if only Y is wrong, just correct Y, keep moving in current dir
                 this.returnMode = needYFix ? 'y-only' : 'none';
             }
             
 
-            // Animation state
             if (needYFix) {
                 this.anim = 'fly';
             } else if (this.returnMode === 'xz' || this.returnMode === 'both') {
                 this.anim = 'walk';
             } else {
-                this.anim = 'idle';
+                this.anim = 'walk';
             }
 
             // Movement
+            let movement, tries = 0;
+            function movementCheck() {
+                movement = object.model.position.clone().addScaledVector(object.randomdir, object.speed * delta);
+                if (movement.distanceTo(player.body.position) > 15 && tries < 10) {
+                    object.randomdir = new THREE.Vector3(
+                        Math.random() * 2 - 1,
+                        0,
+                        Math.random() * 2 - 1
+                    ).normalize();
+                    tries++;
+                    movementCheck();
+                }
+            }
+            movementCheck()
             switch (this.returnMode) {
                 case 'xz':
-                    this.direction.subVectors(center, pos).setY(0).normalize();
+                    this.dir.subVectors(center, pos).setY(0).normalize();
                     this.model.lookAt(center);
-                    pos.addScaledVector(this.direction, this.speed * delta);
+                    pos.addScaledVector(this.dir, this.speed * delta);
                     break;
 
                 case 'both':
-                    this.direction.subVectors(center, pos).setY(0).normalize();
+                    this.dir.subVectors(center, pos).setY(0).normalize();
                     this.model.lookAt(center);
-                    pos.addScaledVector(this.direction, this.speed * delta);
+                    pos.addScaledVector(this.dir, this.speed * delta);
                     break;
 
                 case 'y-only':
-                    // Only adjust Y, keep original random direction
-                    pos.addScaledVector(this.direction, this.speed * delta);
+                    this.model.lookAt(movement)
+                    pos.addScaledVector(this.randomdir, this.speed * delta);
                     break;
 
                 case 'none':
-                    // Fully idle, keep drifting in current direction
-                    pos.addScaledVector(this.direction, this.speed * delta);
+                    this.model.lookAt(movement)
+                    pos.addScaledVector(this.randomdir, this.speed * delta);
                     break;
             }
             this.model.animation.update(this.anim);
@@ -857,7 +867,7 @@ app.ui.button = function (text, x, y, link, font, size, back_color = 0xff0000, p
  };
 app.ui.GUIbutton_hover = false
 app.ui.GUIbutton_click = false
-app.ui.GUIbutton = function (params,minX,maxX,minY,maxY,minZ,maxZ,title='',link=function(){console.log('Hello World!')},color=0x0000ff,location='top') {
+app.ui.GUIbutton = function (params,minX,maxX,minY,maxY,minZ,maxZ,title='',link=function(){console.log('Hello World!')},continuedClick = false,color=0x0000ff,location='top') {
     if (params){
         minX = params.minX
         maxX = params.maxX
@@ -869,6 +879,7 @@ app.ui.GUIbutton = function (params,minX,maxX,minY,maxY,minZ,maxZ,title='',link=
         link = params.link
         color = params.color
         location = params.location
+        continuedClick = params.continuedClick
     }
     function roundRect(ctx, x, y, width, height, radius) {
         ctx.beginPath();
@@ -902,8 +913,14 @@ app.ui.GUIbutton = function (params,minX,maxX,minY,maxY,minZ,maxZ,title='',link=
                     } else {
                         ui_ctx.shadowBlur = 0;
                     }
-                    if (app.ui.GUIbutton_click || app.user.keysPressed.e){
-                        params.link()
+                    if (continuedClick) {
+                        if (app.ui.GUIbutton_click || app.user.keysHeld.e){
+                            params.link()
+                        }
+                    } else {
+                        if (app.ui.GUIbutton_click || app.user.keysPressed.e){
+                            params.link()
+                        }
                     }
                     ui_ctx.globalAlpha = 0.75
                     ui_ctx.fillStyle = '#6666ff';
@@ -942,6 +959,7 @@ app.ui.GUIbutton = function (params,minX,maxX,minY,maxY,minZ,maxZ,title='',link=
             location,
             update: update,
             link: link,
+            continuedClick,
         };
         app.ui.GUIbuttons.push(params);
     } else {
@@ -957,6 +975,7 @@ app.ui.GUIbutton = function (params,minX,maxX,minY,maxY,minZ,maxZ,title='',link=
             location,
             update: update,
             link: link,
+            continuedClick,
         };        
         app.ui.GUIbuttons.push(params);
     }

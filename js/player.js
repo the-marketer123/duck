@@ -133,12 +133,10 @@ const player = {
         }
 
         
-        if (radius < 0.5) radius = 0.5; // prevent camera from going inside the player
+        //if (radius < 0.5) radius = 0.5; // prevent camera from going inside the player
         
         if (radius >= 0.5) {
-            this.body.children.forEach(child => {
-                child.visible = true;
-            });
+            this.body.visible = true
         
             const camOffsetX = radius * Math.sin(this.yaw) * Math.cos(this.pitch);
             const camOffsetY = radius * Math.sin(this.pitch);
@@ -154,11 +152,7 @@ const player = {
         } else {
             this.pointerlock.object.position.copy(playerPos);
         
-            this.body.children.forEach(child => {
-                if (child !== this.body.children[0]) {
-                    child.visible = false;
-                }
-            });
+            this.body.visible = false
         }
         
 

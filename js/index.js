@@ -1,5 +1,5 @@
 (async function() {
-while (!window.startup || !window.rapierReady || !window.modelsReady) {
+while (!window.startup || !window.RAPIER || !window.modelsReady) {
     console.log('check')
     await new Promise(resolve => setTimeout(resolve, 500));
 }

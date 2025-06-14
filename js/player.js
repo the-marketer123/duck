@@ -133,7 +133,7 @@ const player = {
         }
 
         
-        //if (radius < 0.5) radius = 0.5; // prevent camera from going inside the player
+        if (radius < 0.5) radius = 0.5; // prevent camera from going inside the player
         
         if (radius >= 0.5) {
             this.body.visible = true
